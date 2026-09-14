@@ -615,7 +615,10 @@ class H(http.server.BaseHTTPRequestHandler):
         try:
             style = str(c.get("style", "")).strip()[:1500]
             lyrics = str(c.get("lyrics", "")).strip()[:8000]
-            seed = int(c.get("seed", 12))
+            try:
+                seed = int(str(c.get("seed", "")).strip() or 12)
+            except Exception:
+                seed = 12
             if not style or not lyrics:
                 raise ValueError("style and lyrics required")
             if not re.search(r"[a-z\[]", lyrics, re.I):
