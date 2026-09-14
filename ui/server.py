@@ -44,7 +44,7 @@ pre{background:#000;padding:10px;border-radius:8px;overflow:auto;max-height:220p
 <form method="POST" action="/create_run"><div class="ckpt">new: <input name="name" placeholder="artist_name" style="width:180px;background:#000;color:#eee;border:1px solid #444;border-radius:6px;padding:8px"> trigger: <input name="trigger" placeholder="oneword or empty" style="width:160px;background:#000;color:#eee;border:1px solid #444;border-radius:6px;padding:8px"> <button style="padding:8px 16px;border-radius:6px;border:0;background:#7c3aed;color:#fff">Create</button></div></form>
 </div>
 <div id="pane2"><h3>Dataset studio <span class="muted" id="ds_run"></span></h3>
-<form method="POST" action="/set_trigger"><div class="ckpt">trigger word — empty means caption-only mode (style bleeds into everything)<br><input id="ds_trig" name="trigger" style="width:200px;background:#000;color:#eee;border:1px solid #444;border-radius:6px;padding:8px"> <button style="padding:8px 16px;border-radius:6px;border:0;background:#7c3aed;color:#fff">Save</button><br><span class="muted" id="ds_count"></span></div>
+<div class="ckpt"><span class="muted" id="ds_count"></span></div>
 <form method="POST" action="/upload_audio" enctype="multipart/form-data"><div class="ckpt">new song audio — pick many at once (wav/flac/ogg/mp3/m4a/webm, each converts to flac)<br><input type="file" name="audio" multiple accept="audio/*,.wav,.flac,.ogg,.mp3,.m4a,.webm"> name (single file only) <input name="name" placeholder="song_name" style="width:180px;background:#000;color:#eee;border:1px solid #444;border-radius:6px;padding:8px"> <button style="padding:8px 16px;border-radius:6px;border:0;background:#7c3aed;color:#fff">Upload</button></div></form>
 <div id="songs"></div><!--STATIC_SONGS-->
 </div>
@@ -77,8 +77,8 @@ Seed <input id="f_seed" name="seed" value="CFGSEED" type="number" style="width:1
 </div>
 <script>
 let dirty=false;for(const id of ['f_style','f_lyr','f_seed']){document.getElementById(id).addEventListener('input',()=>dirty=true);}
-let trigDirty=false,songsDirty=false;
-document.getElementById('ds_trig').addEventListener('input',()=>trigDirty=true);
+let songsDirty=false;
+
 
 
 
@@ -120,7 +120,7 @@ document.getElementById('log').textContent=d.log_tail;
 const sig=JSON.stringify([d.samples,d.checkpoints,d.files,d.studio,d.runs]);
 if(sig!==lastSig){lastSig=sig;
 let r='';for(const x of d.runs.runs){const act=x.name===d.runs.active;
-r+='<div class="ckpt">'+(act?'<b>'+x.name+' (active)</b>': '<b>'+x.name+'</b> <button onclick="switchRun(\''+x.name+'\')" style="padding:4px 12px;border-radius:6px;border:1px solid #666;background:#222;color:#eee">Switch</button>')+' <span class="muted">'+x.ready+'/'+x.total+' songs'+(x.ckpts.length?' | ckpts '+x.ckpts.join(','):'')+(x.best?' | best ✔':'')+'</span></div>';}
+r+='<div class="ckpt">'+(act?'<b>'+x.name+' (active)</b>': '<b>'+x.name+'</b> <form method="POST" action="/switch_run" style="display:inline"><input type="hidden" name="name" value="'+x.name+'"><button>Switch</button></form>')+' <span class="muted">'+x.ready+'/'+x.total+' songs'+(x.ckpts.length?' | ckpts '+x.ckpts.join(','):'')+(x.best?' | best ✔':'')+'</span><br><form method="POST" action="/set_trigger">trigger: <input name="trigger" value="'+x.trigger+'" placeholder="empty = caption-only" style="width:160px;background:#000;color:#eee;border:1px solid #444;border-radius:6px;padding:8px"><input type="hidden" name="run" value="'+x.name+'"><button>Save</button></form></div>';}
 document.getElementById('runs').innerHTML=r||'<div class="muted">no runs yet — create one below</div>';
 let s='';if(d.samples.length==0){s='no samples yet - first one lands at step 600';}
 for(const x of d.samples){s+='<div class="ckpt"><b>step '+x.step+'</b> <span class="muted">'+x.secs+'s</span><br><button class="play" onclick="togglePlay('+x.step+',\''+x.file+'\',this)">\u25B6</button><input class="seek" type="range" id="seek'+x.step+'" value="0" step="0.1"> <span id="t'+x.step+'" class="muted">0:00</span><div class="bar" style="height:6px"><div class="fill" id="bar'+x.step+'"></div></div><a class="dl" href="/m/'+x.file+'" download="'+x.file+'">\u2B07 Download MP3</a></div>';}
@@ -137,7 +137,7 @@ document.getElementById('dl').innerHTML=h||'nothing yet';
 }
 if(d.studio){document.getElementById('ds_run').textContent='run: '+d.studio.run;
 document.getElementById('ds_count').textContent=d.studio.ready+' / '+d.studio.total+' songs ready (need 10+)';
-if(!trigDirty)document.getElementById('ds_trig').value=d.studio.trigger||'';
+
 if(!songsDirty){let q='';if(!d.studio.songs.length)q='<div class="muted">no songs yet — upload audio above, then add caption + lyrics per song</div>';
 for(const x of d.studio.songs){const ok=x.issues.length===0;
 const esc=s=>String(s).replace(/&/g,'&amp;').replace(/"/g,'&quot;').replace(/</g,'&lt;');
@@ -358,7 +358,8 @@ def runs_snapshot():
         ckd = os.path.join("/workspace/tok/full", n)
         ckpts = sorted(int(m.group(1)) for f in glob.glob(os.path.join(ckd, "step-*.pt")) for m in [re.search(r"step-(\d+)", f)] if m)
         out.append({"name": n, "created": created, "ready": ready, "total": total,
-                    "ckpts": ckpts, "best": os.path.exists(os.path.join(ckd, "best.pt"))})
+                    "ckpts": ckpts, "best": os.path.exists(os.path.join(ckd, "best.pt")),
+                    "trigger": run_trigger(n)})
     return {"active": active_run(), "runs": out}
 
 class H(http.server.BaseHTTPRequestHandler):
@@ -478,7 +479,7 @@ class H(http.server.BaseHTTPRequestHandler):
             for x in d["runs"]["runs"]:
                 act = x["name"] == d["runs"]["active"]
                 sw = "" if act else f"<form method='POST' action='/switch_run' style='display:inline'><input type='hidden' name='name' value='{x['name']}'><button>Switch</button></form>"
-                rs += f"<div class='ckpt'><b>{x['name']}</b>{' (active)' if act else ''} <span class='muted'>{x['ready']}/{x['total']} songs" + (f" | ckpts {','.join(map(str, x['ckpts']))}" if x["ckpts"] else "") + "</span> " + sw + "</div>"
+                rs += f"<div class='ckpt'><b>{x['name']}</b>{' (active)' if act else ''} <span class='muted'>{x['ready']}/{x['total']} songs" + (f" | ckpts {','.join(map(str, x['ckpts']))}" if x["ckpts"] else "") + "</span> " + sw + f"<br><form method='POST' action='/set_trigger'>trigger: <input name='trigger' value='{_h.escape(x['trigger'], quote=True)}' placeholder='empty = caption-only' style='width:160px;background:#000;color:#eee;border:1px solid #444;border-radius:6px;padding:8px'><input type='hidden' name='run' value='{x['name']}'><button>Save</button></form></div>"
             b = HTML.replace("<!--STATIC_STATUS-->", st).replace("<!--STATIC_SAMPLES-->", ss or "<div class='muted'>no samples yet</div>").replace("<!--STATIC_FILES-->", ff).replace("FILLPCT", str(d["pct"])).replace("<!--STATIC_SONGS-->", sg or "<div class='muted'>no songs yet</div>").replace("<!--STATIC_RUNS-->", rs or "<div class='muted'>no runs yet</div>")
             b = b.replace('class="tabradio" checked', 'class="tabradio"')
             b = b.replace(f'id="t{tab}" class="tabradio"', f'id="t{tab}" class="tabradio" checked')
@@ -622,12 +623,15 @@ class H(http.server.BaseHTTPRequestHandler):
     def _post_set_trigger(self):
         c = self._fields()
         if c is None:
-            return self._fail("bad request", "2")
+            return self._fail("bad request", "1")
         try:
             trig = re.sub(r"[^a-z0-9]+", "", str(c.get("trigger", "")).strip().lower())[:32]
+            name = clean_name(c.get("run", "")) or active_run()
+            base = os.path.join(RUNS, name)
+            if not os.path.isdir(base):
+                raise ValueError("unknown run")
         except Exception as e:
-            return self._fail(e, "2")
-        base, _, _ = run_paths()
+            return self._fail(e, "1")
         os.makedirs(base, exist_ok=True)
         cfgp = os.path.join(base, "config.json")
         cfg = {}
@@ -637,7 +641,7 @@ class H(http.server.BaseHTTPRequestHandler):
             pass
         cfg["trigger"] = trig
         json.dump(cfg, open(cfgp, "w"))
-        return self._ok({"ok": True, "trigger": trig, "msg": "trigger saved"}, "2")
+        return self._ok({"ok": True, "trigger": trig, "msg": "trigger saved"}, "1")
     def _post_upload_audio(self):
         ctype = self.headers.get("Content-Type", "")
         m = re.match(r"multipart/form-data; boundary=(.+)$", ctype)
