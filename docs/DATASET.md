@@ -41,7 +41,10 @@ Same trigger on **every** song of the artist.
 - The **complete** lyrics. Truncated lyrics ruin song structure.
 - Section tags in brackets, one per line: `[verse]`, `[chorus]`,
   `[bridge]`, `[pre-chorus]`, `[outro]`, `[intro]`. Numbered variants
-  (`[verse 1]`) are fine.
+  (`[verse 1]`) are fine. Tags are **strongly recommended, not required**:
+  without them training still works (voice + style learn fine) but song
+  *structure* comes out looser — verses/choruses land in random spots.
+  Add tags later for tighter songs.
 - Language: whatever the artist sings. Keep spelling consistent
   (alignment is literal — typos misalign that word, harmless otherwise).
 

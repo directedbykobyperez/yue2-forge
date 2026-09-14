@@ -142,7 +142,7 @@ if(!songsDirty){let q='';if(!d.studio.songs.length)q='<div class="muted">no song
 for(const x of d.studio.songs){const ok=x.issues.length===0;
 const esc=s=>String(s).replace(/&/g,'&amp;').replace(/"/g,'&quot;').replace(/</g,'&lt;');
 const aud=x.audio?'<audio controls preload="none" style="width:100%" src="/a/'+d.studio.run+'/'+x.audio.file+'"></audio><br>':'';
-q+='<div class="ckpt"><b>'+x.name+'</b> '+(x.audio?'<span class="muted">'+x.audio.mb+' MB flac</span>':'<span class="muted">no audio</span>')+' '+(ok?'\u2714 ready':'<span style="color:#f59e0b">'+x.issues.join('; ')+'</span>')+'<br>'+aud+'<form method="POST" action="/save_song"><input type="hidden" name="name" value="'+x.name+'">style / caption<br><input name="style" value="'+esc(x.style)+'" style="width:100%;background:#000;color:#eee;border:1px solid #444;border-radius:6px;padding:8px"><br>lyrics<br><textarea name="lyrics" rows="6" style="width:100%;background:#000;color:#eee;border:1px solid #444;border-radius:6px;padding:8px">'+esc(x.lyrics)+'</textarea><br><button>Save song</button></form><form method="POST" action="/delete_song"><input type="hidden" name="name" value="'+x.name+'"><button>Delete</button></form></div>';}
+q+='<div class="ckpt"><b>'+x.name+'</b> '+(x.audio?'<span class="muted">'+x.audio.mb+' MB flac</span>':'<span class="muted">no audio</span>')+' '+(ok?'\u2714 ready':'<span style="color:#f59e0b">'+x.issues.join('; ')+'</span>')+(x.notes&&x.notes.length?'<br><span class="muted">note: '+x.notes.join('; ')+'</span>':'')+'<br>'+aud+'<form method="POST" action="/save_song"><input type="hidden" name="name" value="'+x.name+'">style / caption<br><input name="style" value="'+esc(x.style)+'" style="width:100%;background:#000;color:#eee;border:1px solid #444;border-radius:6px;padding:8px"><br>lyrics<br><textarea name="lyrics" rows="6" style="width:100%;background:#000;color:#eee;border:1px solid #444;border-radius:6px;padding:8px">'+esc(x.lyrics)+'</textarea><br><button>Save song</button></form><form method="POST" action="/delete_song"><input type="hidden" name="name" value="'+x.name+'"><button>Delete</button></form></div>';}
 document.getElementById('songs').innerHTML=q;}}
 if(!dirty&&d.cfg){document.getElementById('f_style').value=d.cfg.style;document.getElementById('f_lyr').value=d.cfg.lyrics;document.getElementById('f_seed').value=d.cfg.seed;}
 }catch(e){document.getElementById('pct').textContent='connection error ('+e.message+'), retrying...';}}tick();setInterval(tick,3000);tab(1);</script></body></html>"""
@@ -299,6 +299,7 @@ def validate_song(base, ad, trig):
     lines = [l for l in info["lyrics"].splitlines() if l.strip()]
     info["lines"] = len(lines)
     info["tags"] = sorted(set(re.findall(r"^\s*(\[[^\]]+\])\s*$", info["lyrics"], re.M)))
+    info["notes"] = []
     if not info["audio"]:
         info["issues"].append("no audio — upload it below")
     if not info["style"]:
@@ -308,7 +309,7 @@ def validate_song(base, ad, trig):
     if len(lines) < 8:
         info["issues"].append(f"lyrics short ({len(lines)} lines, want 15+)")
     if not info["tags"]:
-        info["issues"].append("no [section] tags in lyrics")
+        info["notes"].append("no [section] tags — structure looser (add [verse]/[chorus] later for tighter songs)")
     return info
 def studio_snapshot():
     base, ad, _ = run_paths()
@@ -488,7 +489,7 @@ class H(http.server.BaseHTTPRequestHandler):
                 auf = x["audio"]["file"] if x["audio"] else ""
                 player = f"<audio controls preload='none' style='width:100%' src='/a/{d['studio']['run']}/{auf}'></audio><br>" if auf else ""
                 flag = "ready ✔" if not x["issues"] else " — ".join(x["issues"])
-                sg += f"<div class='ckpt'><b>{x['name']}</b> <span class='muted'>{x['lines']} lines, {x['audio']['mb'] if x['audio'] else 0} MB</span><br>{player}<span class='muted'>{flag}</span>"
+                sg += f"<div class='ckpt'><b>{x['name']}</b> <span class='muted'>{x['lines']} lines, {x['audio']['mb'] if x['audio'] else 0} MB</span><br>{player}<span class='muted'>{flag}</span>" + (f"<br><span class='muted'>note: {' — '.join(x['notes'])}</span>" if x["notes"] else "")
                 sg += f"<form method='POST' action='/save_song'><input type='hidden' name='name' value='{x['name']}'>"
                 sg += f"style / caption<br><input name='style' value='{_h.escape(x['style'], quote=True)}' style='width:100%;background:#000;color:#eee;border:1px solid #444;border-radius:6px;padding:8px'><br>"
                 sg += f"lyrics<br><textarea name='lyrics' rows='6' style='width:100%;background:#000;color:#eee;border:1px solid #444;border-radius:6px;padding:8px'>{_h.escape(x['lyrics'], quote=False)}</textarea><br>"
