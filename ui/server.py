@@ -120,7 +120,7 @@ document.getElementById('log').textContent=d.log_tail;
 const sig=JSON.stringify([d.samples,d.checkpoints,d.files,d.studio,d.runs]);
 if(sig!==lastSig){lastSig=sig;
 let r='';for(const x of d.runs.runs){const act=x.name===d.runs.active;
-r+='<div class="ckpt">'+(act?'<b>'+x.name+' (active)</b>': '<b>'+x.name+'</b> <form method="POST" action="/switch_run" style="display:inline"><input type="hidden" name="name" value="'+x.name+'"><button>Switch</button></form>')+' <span class="muted">'+x.ready+'/'+x.total+' songs'+(x.ckpts.length?' | ckpts '+x.ckpts.join(','):'')+(x.best?' | best ✔':'')+'</span><br><form method="POST" action="/set_trigger">trigger: <input name="trigger" value="'+x.trigger+'" placeholder="empty = caption-only" style="width:160px;background:#000;color:#eee;border:1px solid #444;border-radius:6px;padding:8px"><input type="hidden" name="run" value="'+x.name+'"><button>Save</button></form></div>';}
+r+='<div class="ckpt">'+(act?'<b>'+x.name+' (active)</b>': '<b>'+x.name+'</b> <form method="POST" action="/switch_run" style="display:inline"><input type="hidden" name="name" value="'+x.name+'"><button>Switch</button></form>')+' <span class="muted">'+x.ready+'/'+x.total+' songs'+(x.ckpts.length?' | ckpts '+x.ckpts.join(','):'')+(x.best?' | best ✔':'')+'</span> <a href="/confirm_delete?run='+x.name+'" style="color:#f87171;text-decoration:none;font-size:18px" title="delete run">✕</a><br><form method="POST" action="/set_trigger">trigger: <input name="trigger" value="'+x.trigger+'" placeholder="empty = caption-only" style="width:160px;background:#000;color:#eee;border:1px solid #444;border-radius:6px;padding:8px"><input type="hidden" name="run" value="'+x.name+'"><button>Save</button></form></div>';}
 document.getElementById('runs').innerHTML=r||'<div class="muted">no runs yet — create one below</div>';
 let s='';if(d.samples.length==0){s='no samples yet - first one lands at step 600';}
 for(const x of d.samples){s+='<div class="ckpt"><b>step '+x.step+'</b> <span class="muted">'+x.secs+'s</span><br><button class="play" onclick="togglePlay('+x.step+',\''+x.file+'\',this)">\u25B6</button><input class="seek" type="range" id="seek'+x.step+'" value="0" step="0.1"> <span id="t'+x.step+'" class="muted">0:00</span><div class="bar" style="height:6px"><div class="fill" id="bar'+x.step+'"></div></div><a class="dl" href="/m/'+x.file+'" download="'+x.file+'">\u2B07 Download MP3</a></div>';}
@@ -443,6 +443,26 @@ class H(http.server.BaseHTTPRequestHandler):
                 return
             self._send(os.path.join(GEN, fn),
                          "audio/mpeg" if fn.endswith(".mp3") else "audio/flac")
+        elif self.path.split("?", 1)[0] == "/confirm_delete":
+            import urllib.parse as _uq2
+            q = self.path.split("?", 1)[1] if "?" in self.path else ""
+            name = clean_name(_uq2.parse_qs(q).get("run", [""])[0])
+            base = os.path.join(RUNS, name)
+            if not name or not os.path.isdir(base):
+                self.send_error(404)
+                return
+            _, ad, _ = run_paths(name)
+            nsongs = len(glob.glob(os.path.join(ad, "*.flac")))
+            ckd = os.path.join("/workspace/tok/full", name)
+            nckpt = len(glob.glob(os.path.join(ckd, "*.pt")))
+            nsamp = len(glob.glob(os.path.join(GEN, name + "_s*.mp3")))
+            page = f"""<!DOCTYPE html><html><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>delete {name}?</title><style>body{{background:#111;color:#eee;font-family:system-ui,sans-serif;max-width:560px;margin:0 auto;padding:20px}}.warn{{background:#3a1414;border:1px solid #f87171;border-radius:8px;padding:14px}}button{{padding:10px 20px;border-radius:6px;font-size:15px}}a{{color:#22d3ee}}</style></head><body><h2>Delete run '{name}'?</h2><div class="warn">This permanently removes:<br>· {nsongs} song(s) + captions + lyrics<br>· {nckpt} checkpoint file(s) incl. LoRAs<br>· {nsamp} sample track(s)<br><br>Cannot be undone. Download anything you want to keep first.</div><br><form method="POST" action="/delete_run"><input type="hidden" name="name" value="{name}"><button style="border:0;background:#dc2626;color:#fff">Yes, delete everything</button></form><br><a href="/?tab=1">Cancel — keep my run</a></body></html>"""
+            b = page.encode()
+            self.send_response(200)
+            self.send_header("Content-Type", "text/html")
+            self.send_header("Content-Length", str(len(b)))
+            self.end_headers()
+            self.wfile.write(b)
         else:
             import time as _t, html as _h, urllib.parse as _uq
             q = self.path.split("?", 1)[1] if "?" in self.path else ""
@@ -478,7 +498,7 @@ class H(http.server.BaseHTTPRequestHandler):
             for x in d["runs"]["runs"]:
                 act = x["name"] == d["runs"]["active"]
                 sw = "" if act else f"<form method='POST' action='/switch_run' style='display:inline'><input type='hidden' name='name' value='{x['name']}'><button>Switch</button></form>"
-                rs += f"<div class='ckpt'><b>{x['name']}</b>{' (active)' if act else ''} <span class='muted'>{x['ready']}/{x['total']} songs" + (f" | ckpts {','.join(map(str, x['ckpts']))}" if x["ckpts"] else "") + "</span> " + sw + f"<br><form method='POST' action='/set_trigger'>trigger: <input name='trigger' value='{_h.escape(x['trigger'], quote=True)}' placeholder='empty = caption-only' style='width:160px;background:#000;color:#eee;border:1px solid #444;border-radius:6px;padding:8px'><input type='hidden' name='run' value='{x['name']}'><button>Save</button></form></div>"
+                rs += f"<div class='ckpt'><b>{x['name']}</b>{' (active)' if act else ''} <span class='muted'>{x['ready']}/{x['total']} songs" + (f" | ckpts {','.join(map(str, x['ckpts']))}" if x["ckpts"] else "") + "</span> " + sw + f" <a href='/confirm_delete?run={x['name']}' style='color:#f87171;text-decoration:none;font-size:18px' title='delete run'>✕</a><br><form method='POST' action='/set_trigger'>trigger: <input name='trigger' value='{_h.escape(x['trigger'], quote=True)}' placeholder='empty = caption-only' style='width:160px;background:#000;color:#eee;border:1px solid #444;border-radius:6px;padding:8px'><input type='hidden' name='run' value='{x['name']}'><button>Save</button></form></div>"
             b = HTML.replace("<!--STATIC_STATUS-->", st).replace("<!--STATIC_SAMPLES-->", ss or "<div class='muted'>no samples yet</div>").replace("<!--STATIC_FILES-->", ff).replace("FILLPCT", str(d["pct"])).replace("<!--STATIC_SONGS-->", sg or "<div class='muted'>no songs yet</div>").replace("<!--STATIC_RUNS-->", rs or "<div class='muted'>no runs yet</div>")
             b = b.replace('class="tabradio" checked', 'class="tabradio"')
             b = b.replace(f'id="t{tab}" class="tabradio"', f'id="t{tab}" class="tabradio" checked')
@@ -513,6 +533,8 @@ class H(http.server.BaseHTTPRequestHandler):
             return self._post_switch_run()
         if path == "/start_training":
             return self._post_start_training()
+        if path == "/delete_run":
+            return self._post_delete_run()
         self.send_error(404)
     def _body(self, limit):
         try:
@@ -666,7 +688,6 @@ class H(http.server.BaseHTTPRequestHandler):
                         continue
                     if os.path.splitext(fn)[1].lower() == ".txt":
                         lyricfiles.append((fn, bl))
-                    else:
                         tracks.append((fn, bl))
             if not tracks and not lyricfiles:
                 raise ValueError("no audio or lyrics files in upload")
@@ -837,6 +858,43 @@ class H(http.server.BaseHTTPRequestHandler):
                          stdout=log, stderr=subprocess.STDOUT, stdin=subprocess.DEVNULL,
                          start_new_session=True, env=env)
         return self._ok({"ok": True, "run": name, "msg": f"training {name} {start}→{total}"}, "3")
+    def _post_delete_run(self):
+        if subprocess.run(["pgrep", "-f", "ar_train|ar_lora_"], capture_output=True).returncode == 0:
+            return self._fail("stop training first — refusing to delete under a live run", "1")
+        c = self._fields()
+        if c is None:
+            return self._fail("bad request", "1")
+        name = clean_name(c.get("name", ""))
+        base = os.path.join(RUNS, name)
+        if not name or not os.path.isdir(base):
+            return self._fail("unknown run", "1")
+        import shutil
+        shutil.rmtree(base, ignore_errors=True)
+        shutil.rmtree(os.path.join("/workspace/tok/full", name), ignore_errors=True)
+        for f in glob.glob(os.path.join(GEN, name + "_s*")):
+            try:
+                os.remove(f)
+            except Exception:
+                pass
+        for link in ("/workspace/real/artist", "/workspace/real/artist_lyrics"):
+            if os.path.islink(link) and name in os.readlink(link):
+                try:
+                    os.remove(link)
+                except Exception:
+                    pass
+        reg = _registry()
+        try:
+            del reg.get("runs", {})[name]
+        except KeyError:
+            pass
+        if reg.get("active") == name:
+            rest = [d for d in os.listdir(RUNS) if os.path.isdir(os.path.join(RUNS, d))] if os.path.isdir(RUNS) else []
+            if rest:
+                reg["active"] = sorted(rest)[0]
+            else:
+                reg.pop("active", None)
+        _save_registry(reg)
+        return self._ok({"ok": True, "msg": "deleted run " + name + " (songs, checkpoints, samples)"}, "1")
     def _json(self, obj):
         b = json.dumps(obj).encode()
         self.send_response(200)
