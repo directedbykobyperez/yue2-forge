@@ -39,7 +39,6 @@ pre{background:#000;padding:10px;border-radius:8px;overflow:auto;max-height:220p
 <div id="pane1"><h3>Runs</h3>
 <div id="runs"></div>
 <div class="ckpt">new run<br>name <input id="nr_name" placeholder="artist_name" style="width:180px;background:#000;color:#eee;border:1px solid #444;border-radius:6px;padding:8px"> trigger <input id="nr_trig" placeholder="oneword or empty" style="width:160px;background:#000;color:#eee;border:1px solid #444;border-radius:6px;padding:8px"> <button onclick="mkRun()" style="padding:8px 16px;border-radius:6px;border:0;background:#7c3aed;color:#fff">Create + switch</button> <span id="nr_msg" class="muted"></span></div>
-<div class="ckpt">training — active run only<br>from <select id="tr_init" style="background:#000;color:#eee;border:1px solid #444;border-radius:6px;padding:8px"><option value="fresh">fresh</option><option value="last">last.pt</option><option value="best">best.pt</option></select> to step <input id="tr_steps" type="number" value="1600" style="width:90px;background:#000;color:#eee;border:1px solid #444;border-radius:6px;padding:8px"> <button onclick="startTrain()" style="padding:8px 16px;border-radius:6px;border:0;background:#22c55e;color:#000">Start training</button> <span id="tr_msg" class="muted"></span><br><span class="muted">needs dataset ready first (finish songs above, then prep via scripts/run_all.sh steps 1-3)</span></div>
 </div>
 <div id="pane2"><h3>Dataset studio <span class="muted" id="ds_run"></span></h3>
 <div class="ckpt">trigger word — empty means caption-only mode (style bleeds into everything)<br><input id="ds_trig" style="width:200px;background:#000;color:#eee;border:1px solid #444;border-radius:6px;padding:8px"> <button onclick="saveTrig()" style="padding:8px 16px;border-radius:6px;border:0;background:#7c3aed;color:#fff">Save</button> <span id="trig_msg" class="muted"></span><br><span class="muted" id="ds_count"></span></div>
@@ -57,6 +56,7 @@ pre{background:#000;padding:10px;border-radius:8px;overflow:auto;max-height:220p
 <div class="card">minted_val eval<div><b id="mval">-</b></div></div>
 <div class="card">ETA<div><b id="eta">-</b></div></div>
 </div>
+<div class="ckpt">training — active run only<br>from <select id="tr_init" style="background:#000;color:#eee;border:1px solid #444;border-radius:6px;padding:8px"><option value="fresh">fresh</option><option value="last">last.pt</option><option value="best">best.pt</option></select> to step <input id="tr_steps" type="number" value="1600" style="width:90px;background:#000;color:#eee;border:1px solid #444;border-radius:6px;padding:8px"> <button onclick="startTrain()" style="padding:8px 16px;border-radius:6px;border:0;background:#22c55e;color:#000">Start training</button> <span id="tr_msg" class="muted"></span><br><span class="muted">needs dataset ready first (finish songs above, then prep via scripts/run_all.sh steps 1-3)</span></div>
 <h3>Samples (your custom prompt below)</h3>
 <!--STATIC_SAMPLES-->
 <div id="samples"></div>
