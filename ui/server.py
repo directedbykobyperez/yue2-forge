@@ -45,7 +45,7 @@ pre{background:#000;padding:10px;border-radius:8px;overflow:auto;max-height:220p
 </div>
 <div id="pane2"><h3>Dataset studio <span class="muted" id="ds_run"></span></h3>
 <div class="ckpt"><span class="muted" id="ds_count"></span></div>
-<form method="POST" action="/upload_audio" enctype="multipart/form-data"><div class="ckpt">new song audio — pick many at once (wav/flac/ogg/mp3/m4a/webm, each converts to flac)<br><input type="file" name="audio" multiple accept="audio/*,.wav,.flac,.ogg,.mp3,.m4a,.webm"> name (single file only) <input name="name" placeholder="song_name" style="width:180px;background:#000;color:#eee;border:1px solid #444;border-radius:6px;padding:8px"> <button style="padding:8px 16px;border-radius:6px;border:0;background:#7c3aed;color:#fff">Upload</button></div></form>
+<form method="POST" action="/upload_audio" enctype="multipart/form-data"><div class="ckpt">new song audio — pick many at once (wav/flac/ogg/mp3/m4a/webm, each converts to flac)<br><input type="file" name="audio" multiple accept="audio/*,.wav,.flac,.ogg,.mp3,.m4a,.webm"> <button style="padding:8px 16px;border-radius:6px;border:0;background:#7c3aed;color:#fff">Upload</button></div></form>
 <div id="songs"></div><!--STATIC_SONGS-->
 </div>
 <div id="pane3"><!--STATIC_STATUS-->
@@ -651,58 +651,61 @@ class H(http.server.BaseHTTPRequestHandler):
         if raw is None:
             return self._fail("file too big (400MB max)", "2")
         try:
-            qs = self.path.split("?", 1)[1] if "?" in self.path else ""
-            qn = re.findall(r"(?:^|&)name=([^&]*)", qs)
-            import urllib.parse as _up
-            fields = {}
             bound = ("--" + m.group(1).strip().strip('"')).encode()
             parts = raw.split(bound)
-            blob, fname = None, "upload.bin"
+            tracks = []
             for p in parts:
                 if b"\r\n\r\n" not in p:
                     continue
                 head, body = p.split(b"\r\n\r\n", 1)
                 nm = re.search(rb'name="([^"]+)"', head)
-                if not nm:
-                    continue
                 fnm = re.search(rb'filename="([^"]+)"', head)
-                if fnm and nm.group(1) == b"audio":
-                    blob = body.rsplit(b"\r\n", 1)[0]
-                    fname = fnm.group(1).decode("utf-8", "replace")
-                elif not fnm:
-                    fields[nm.group(1).decode()] = body.rsplit(b"\r\n", 1)[0].decode("utf-8", "replace")
-            name = clean_name(_up.unquote(qn[0]) if qn else fields.get("name", ""))
-            if not name:
-                raise ValueError("song name required")
-            if not blob:
-                raise ValueError("no audio file field")
-            ext = os.path.splitext(fname)[1].lower()
-            if ext not in AUDIO_EXTS:
-                raise ValueError(f"audio type {ext or '?'} not accepted (wav/flac/ogg/mp3/m4a/webm)")
+                if nm and fnm and nm.group(1) == b"audio":
+                    fn = fnm.group(1).decode("utf-8", "replace")
+                    bl = body.rsplit(b"\r\n", 1)[0]
+                    if bl:
+                        tracks.append((fn, bl))
+            if not tracks:
+                raise ValueError("no audio files in upload")
+            for fn, _ in tracks:
+                ext = os.path.splitext(fn)[1].lower()
+                if ext not in AUDIO_EXTS:
+                    raise ValueError(f"audio type {ext or '?'} not accepted (wav/flac/ogg/mp3/m4a/webm)")
         except Exception as e:
             return self._fail(e, "2")
         _, ad, _ = run_paths()
         os.makedirs(ad, exist_ok=True)
-        tmp = os.path.join(ad, name + ".incoming" + ext)
-        open(tmp, "wb").write(blob)
-        out = os.path.join(ad, name + ".flac")
-        try:
-            r = subprocess.run(["ffmpeg", "-y", "-v", "error", "-i", tmp, "-c:a", "flac", out],
-                               capture_output=True, timeout=600)
-        except Exception as e:
+        done, errs = [], []
+        for fname, blob in tracks:
+            name = clean_name(os.path.splitext(os.path.basename(fname))[0])
+            if not name:
+                errs.append(f"{fname}: bad name")
+                continue
+            tmp = os.path.join(ad, name + ".incoming" + os.path.splitext(fname)[1].lower())
+            open(tmp, "wb").write(blob)
+            out = os.path.join(ad, name + ".flac")
+            try:
+                r = subprocess.run(["ffmpeg", "-y", "-v", "error", "-i", tmp, "-c:a", "flac", out],
+                                   capture_output=True, timeout=600)
+            except Exception as e:
+                try:
+                    os.remove(tmp)
+                except Exception:
+                    pass
+                errs.append(f"{fname}: convert failed")
+                continue
             try:
                 os.remove(tmp)
             except Exception:
                 pass
-            return self._fail(f"audio convert failed: {str(e)[:100]}", "2")
-        try:
-            os.remove(tmp)
-        except Exception:
-            pass
-        if r.returncode != 0 or not os.path.exists(out):
-            err = (r.stderr or b"").decode("utf-8", "replace")[-200:]
-            return self._fail(f"ffmpeg rejected it ({err or 'unknown'})", "2")
-        return self._ok({"ok": True, "mb": round(os.path.getsize(out) / 2**20, 1), "msg": f"uploaded {name}.flac"}, "2")
+            if r.returncode != 0 or not os.path.exists(out):
+                errs.append(f"{fname}: ffmpeg rejected it")
+            else:
+                done.append(name)
+        if not done:
+            return self._fail("; ".join(errs) or "nothing converted", "2")
+        msg = f"uploaded {len(done)}: {', '.join(done)}" + (f" — errors: {'; '.join(errs)}" if errs else "")
+        return self._ok({"ok": True, "msg": msg}, "2")
     def _repoint(self, link, target):
         os.makedirs(os.path.dirname(link), exist_ok=True)
         os.makedirs(target, exist_ok=True)
