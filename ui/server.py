@@ -536,7 +536,7 @@ class H(http.server.BaseHTTPRequestHandler):
             b = b.replace("<!--MSG-->", f"<div class='ckpt' style='border-color:#7c3aed'>{_h.escape(msg)}</div>" if msg else "")
             b = b.replace('<b id="step">-</b>', f"<b id=\"step\">{d['step_est']}</b>").replace('<b id="phase">-</b>', f"<b id=\"phase\">{d['phase']}</b>").replace('<b id="loss">-</b>', f"<b id=\"loss\">{d['loss']}</b>").replace('<b id="eval">-</b>', f"<b id=\"eval\">{d['artist_eval']}</b>").replace('<b id="mval">-</b>', f"<b id=\"mval\">{d['minted_eval']}</b>")
             b = b.replace('<b id="eta">-</b>', f"<b id=\"eta\">{d['eta']}</b>")
-            b = b.replace("FORGETITLE", _h.escape(os.environ.get("FORGE_TITLE", "yue2-forge training")))
+            b = b.replace("FORGETITLE", _h.escape(os.environ.get("FORGE_TITLE", "YuE2-forge LoRA training")))
             b = b.replace("CFGSTYLE", _h.escape(d["cfg"].get("style", ""), quote=True)).replace("CFGLYRICS", _h.escape(d["cfg"].get("lyrics", ""), quote=False)).replace('value="CFGSEED"', f"value=\"{d['cfg'].get('seed', 12)}\"")
             b = b.replace("STATICLOG", _h.escape(d["log_tail"] or "no log yet", quote=False))
             b = b.encode()
