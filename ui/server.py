@@ -11,7 +11,7 @@ STYLE_FILE = "/workspace/real/artist/sample.txt"
 LYR_FILE = "/workspace/sample_lyrics.txt"
 TOTAL = int(os.environ.get("FORGE_TOTAL", "1600"))
 RUNS = os.environ.get("FORGE_RUNS", "/workspace/runs")
-AUDIO_EXTS = (".flac", ".wav", ".ogg", ".mp3", ".m4a")
+AUDIO_EXTS = (".flac", ".wav", ".ogg", ".mp3", ".m4a", ".webm")
 MIN_SONGS = 10
 DL = {
     "ckpt": (OUT, r"^(step-\d+|best|last)\.pt$"),
@@ -43,7 +43,7 @@ pre{background:#000;padding:10px;border-radius:8px;overflow:auto;max-height:220p
 </div>
 <div id="pane2"><h3>Dataset studio <span class="muted" id="ds_run"></span></h3>
 <div class="ckpt">trigger word — empty means caption-only mode (style bleeds into everything)<br><input id="ds_trig" style="width:200px;background:#000;color:#eee;border:1px solid #444;border-radius:6px;padding:8px"> <button onclick="saveTrig()" style="padding:8px 16px;border-radius:6px;border:0;background:#7c3aed;color:#fff">Save</button> <span id="trig_msg" class="muted"></span><br><span class="muted" id="ds_count"></span></div>
-<div class="ckpt">new song audio — pick many at once (wav/flac/ogg/mp3/m4a, each converts to flac)<br><input type="file" id="up_file" multiple accept="audio/*,.wav,.flac,.ogg,.mp3,.m4a"> name (single file only) <input id="up_name" placeholder="song_name" style="width:180px;background:#000;color:#eee;border:1px solid #444;border-radius:6px;padding:8px"> <button onclick="upAudio()" style="padding:8px 16px;border-radius:6px;border:0;background:#7c3aed;color:#fff">Upload</button> <span id="up_msg" class="muted"></span></div>
+<div class="ckpt">new song audio — pick many at once (wav/flac/ogg/mp3/m4a/webm, each converts to flac)<br><input type="file" id="up_file" multiple accept="audio/*,.wav,.flac,.ogg,.mp3,.m4a,.webm"> name (single file only) <input id="up_name" placeholder="song_name" style="width:180px;background:#000;color:#eee;border:1px solid #444;border-radius:6px;padding:8px"> <button onclick="upAudio()" style="padding:8px 16px;border-radius:6px;border:0;background:#7c3aed;color:#fff">Upload</button> <span id="up_msg" class="muted"></span></div>
 <div id="songs"></div><!--STATIC_SONGS-->
 </div>
 <div id="pane3"><!--STATIC_STATUS-->
@@ -449,7 +449,7 @@ class H(http.server.BaseHTTPRequestHandler):
                 return
             p = os.path.join(run_paths(rn)[1], fn)
             ctype = {"flac": "audio/flac", "wav": "audio/wav", "ogg": "audio/ogg",
-                     "mp3": "audio/mpeg", "m4a": "audio/mp4"}.get(os.path.splitext(fn)[1].lower()[1:], "audio/mpeg")
+                     "mp3": "audio/mpeg", "m4a": "audio/mp4", "webm": "audio/webm"}.get(os.path.splitext(fn)[1].lower()[1:], "audio/mpeg")
             self._send(p, ctype)
         elif self.path.startswith("/m/"):
             fn = os.path.basename(self.path[3:])
@@ -641,7 +641,7 @@ class H(http.server.BaseHTTPRequestHandler):
                 raise ValueError("no audio file field")
             ext = os.path.splitext(fname)[1].lower()
             if ext not in AUDIO_EXTS:
-                raise ValueError(f"audio type {ext or '?'} not accepted (wav/flac/ogg/mp3/m4a)")
+                raise ValueError(f"audio type {ext or '?'} not accepted (wav/flac/ogg/mp3/m4a/webm)")
         except Exception as e:
             self._json({"ok": False, "error": str(e)[:120]})
             return

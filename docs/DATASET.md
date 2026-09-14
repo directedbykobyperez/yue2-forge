@@ -4,7 +4,7 @@ The trainer learns from **full songs**, not clips. Each song needs 3 files
 in `/workspace/real/artist/` sharing one base name, e.g. `mysong`:
 
 ```
-mysong.flac        full song audio (wav/flac/ogg/mp3 all fine, converted automatically)
+mysong.flac        full song audio (wav/flac/ogg/mp3/m4a/webm all accepted, converted automatically)
 mysong.txt         style caption, trigger FIRST (see below)
 mysong.lyrics.txt  FULL lyrics with section tags (see below)
 ```
@@ -64,6 +64,9 @@ Example:
 
 - Studio recordings beat live rips. Drowned/out-of-tune vocals teach
   drowned/out-of-tune output.
+- Lossless (wav/flac) beats lossy (mp3/webm): lossy artifacts become part
+  of what the model learns. WebM/MP3 work, just prefer the best source
+  you have — never upscale a 128kbps rip and call it quality.
 - One artist per run. Mixed artists in one run = mixed-up voice.
 - Keep the same caption across songs (only lyrics change) for the
   tightest trigger binding.
