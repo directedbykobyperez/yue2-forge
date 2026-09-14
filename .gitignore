@@ -26,7 +26,9 @@ prep/
 hf/
 .cache/
 
-# Logs
+# Local launch artifacts
+cloudflared
+/tmp/
 *.log
 
 # Secrets — NEVER commit
