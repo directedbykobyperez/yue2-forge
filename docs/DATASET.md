@@ -13,7 +13,7 @@ mysong.lyrics.txt  FULL lyrics with section tags (see below)
 
 - One file per **whole song** (2–5 min). Never split into parts: the model
   learns song structure (verse → chorus → bridge) across the full track.
-- **No 60-second clips, no chunked parts** (AIToolkit-style `p1/p2/p3` splits
+- **No 60-second clips, no chunked parts** (`song_p1/p2/p3` style splits
   are explicitly unsupported). Short clips can't teach structure and break
   lyric alignment. Full songs only — the 60-second format is for checkpoint
   *listening samples*, never for training input.

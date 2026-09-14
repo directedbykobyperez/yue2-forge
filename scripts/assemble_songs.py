@@ -1,5 +1,5 @@
-"""Convert AIToolkit dataset (ogg+txt chunks) -> YuE2 artist LoRA format.
-Input : /workspace/dl/datasets/tonydize2/<song>_pN.ogg + <song>_pN.txt (AIToolkit XML-ish)
+"""Assemble full songs from chunked parts (ogg+txt) -> YuE2 artist LoRA format.
+Input : <song>_pN.ogg + <song>_pN.txt caption files (part-numbered chunks)
 Output: /workspace/real/artist/<song>.flac + <song>.txt (style, trigger first)
         + <song>.lyrics.txt (full tagged lyrics)
         + copy of lyrics to /workspace/real/artist_lyrics/<song>.lyrics.txt (cursor_prep reads LYD)
