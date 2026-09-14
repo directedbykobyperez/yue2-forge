@@ -9,6 +9,10 @@ mysong.txt         style caption, trigger FIRST (see below)
 mysong.lyrics.txt  FULL lyrics with section tags (see below)
 ```
 
+Shortcut: upload `mysong.mp3` + `mysong.txt` (lyrics text) together in the
+dataset studio and the lyrics auto-fill that song's box — matched by file
+name. Captions you type per song in the studio for now.
+
 ## 1. Audio — full songs only
 
 - One file per **whole song** (2–5 min). Never split into parts: the model

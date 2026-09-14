@@ -45,7 +45,7 @@ pre{background:#000;padding:10px;border-radius:8px;overflow:auto;max-height:220p
 </div>
 <div id="pane2"><h3>Dataset studio <span class="muted" id="ds_run"></span></h3>
 <div class="ckpt"><span class="muted" id="ds_count"></span></div>
-<form method="POST" action="/upload_audio" enctype="multipart/form-data"><div class="ckpt">new song audio — pick many at once (wav/flac/ogg/mp3/m4a/webm, each converts to flac)<br><input type="file" name="audio" multiple accept="audio/*,.wav,.flac,.ogg,.mp3,.m4a,.webm"> <button style="padding:8px 16px;border-radius:6px;border:0;background:#7c3aed;color:#fff">Upload</button></div></form>
+<form method="POST" action="/upload_audio" enctype="multipart/form-data"><div class="ckpt">songs + lyrics files — pick many at once. audio (wav/flac/ogg/mp3/m4a/webm) converts to flac; a matching <b>songname.txt</b> auto-fills that song's lyrics<br><input type="file" name="audio" multiple accept="audio/*,.wav,.flac,.ogg,.mp3,.m4a,.webm,.txt"> <button style="padding:8px 16px;border-radius:6px;border:0;background:#7c3aed;color:#fff">Upload</button></div></form>
 <div id="songs"></div><!--STATIC_SONGS-->
 </div>
 <div id="pane3"><!--STATIC_STATUS-->
@@ -142,7 +142,7 @@ if(!songsDirty){let q='';if(!d.studio.songs.length)q='<div class="muted">no song
 for(const x of d.studio.songs){const ok=x.issues.length===0;
 const esc=s=>String(s).replace(/&/g,'&amp;').replace(/"/g,'&quot;').replace(/</g,'&lt;');
 const aud=x.audio?'<audio controls preload="none" style="width:100%" src="/a/'+d.studio.run+'/'+x.audio.file+'"></audio><br>':'';
-q+='<div class="ckpt"><b>'+x.name+'</b> '+(x.audio?'<span class="muted">'+x.audio.mb+' MB flac</span>':'<span class="muted">no audio</span>')+' '+(ok?'\u2714 ready':'<span style="color:#f59e0b">'+x.issues.join('; ')+'</span>')+'<br>'+aud+'trigger (empty = run default)<br><input id="tg_'+x.name+'" oninput="songsDirty=true" value="'+esc(x.trig)+'" placeholder="run default: '+esc(d.studio.trigger||'(none)')+'" style="width:220px;background:#000;color:#eee;border:1px solid #444;border-radius:6px;padding:8px"><br>style / caption<br><input id="st_'+x.name+'" oninput="songsDirty=true" value="'+esc(x.style)+'" style="width:100%;background:#000;color:#eee;border:1px solid #444;border-radius:6px;padding:8px"><br>lyrics<br><textarea id="ly_'+x.name+'" oninput="songsDirty=true" rows="6" style="width:100%;background:#000;color:#eee;border:1px solid #444;border-radius:6px;padding:8px">'+esc(x.lyrics)+'</textarea><br><button onclick="saveSong(\''+x.name+'\')" style="padding:6px 14px;border-radius:6px;border:0;background:#7c3aed;color:#fff">Save</button> <button onclick="delSong(\''+x.name+'\')" style="padding:6px 14px;border-radius:6px;border:1px solid #666;background:#222;color:#eee">Delete</button> <span id="msg_'+x.name+'" class="muted"></span></div>';}
+q+='<div class="ckpt"><b>'+x.name+'</b> '+(x.audio?'<span class="muted">'+x.audio.mb+' MB flac</span>':'<span class="muted">no audio</span>')+' '+(ok?'\u2714 ready':'<span style="color:#f59e0b">'+x.issues.join('; ')+'</span>')+'<br>'+aud+'<form method="POST" action="/save_song"><input type="hidden" name="name" value="'+x.name+'">style / caption<br><input name="style" value="'+esc(x.style)+'" style="width:100%;background:#000;color:#eee;border:1px solid #444;border-radius:6px;padding:8px"><br>lyrics<br><textarea name="lyrics" rows="6" style="width:100%;background:#000;color:#eee;border:1px solid #444;border-radius:6px;padding:8px">'+esc(x.lyrics)+'</textarea><br><button>Save song</button></form><form method="POST" action="/delete_song"><input type="hidden" name="name" value="'+x.name+'"><button>Delete</button></form></div>';}
 document.getElementById('songs').innerHTML=q;}}
 if(!dirty&&d.cfg){document.getElementById('f_style').value=d.cfg.style;document.getElementById('f_lyr').value=d.cfg.lyrics;document.getElementById('f_seed').value=d.cfg.seed;}
 }catch(e){document.getElementById('pct').textContent='connection error ('+e.message+'), retrying...';}}tick();setInterval(tick,3000);tab(1);</script></body></html>"""
@@ -470,7 +470,6 @@ class H(http.server.BaseHTTPRequestHandler):
                 flag = "ready ✔" if not x["issues"] else " — ".join(x["issues"])
                 sg += f"<div class='ckpt'><b>{x['name']}</b> <span class='muted'>{x['lines']} lines, {x['audio']['mb'] if x['audio'] else 0} MB</span><br>{player}<span class='muted'>{flag}</span>"
                 sg += f"<form method='POST' action='/save_song'><input type='hidden' name='name' value='{x['name']}'>"
-                sg += f"trigger (empty = run default)<br><input name='trigger' value='{_h.escape(x['trig'], quote=True)}' style='width:220px;background:#000;color:#eee;border:1px solid #444;border-radius:6px;padding:8px'><br>"
                 sg += f"style / caption<br><input name='style' value='{_h.escape(x['style'], quote=True)}' style='width:100%;background:#000;color:#eee;border:1px solid #444;border-radius:6px;padding:8px'><br>"
                 sg += f"lyrics<br><textarea name='lyrics' rows='6' style='width:100%;background:#000;color:#eee;border:1px solid #444;border-radius:6px;padding:8px'>{_h.escape(x['lyrics'], quote=False)}</textarea><br>"
                 sg += f"<button>Save song</button></form>"
@@ -653,7 +652,7 @@ class H(http.server.BaseHTTPRequestHandler):
         try:
             bound = ("--" + m.group(1).strip().strip('"')).encode()
             parts = raw.split(bound)
-            tracks = []
+            tracks, lyricfiles = [], []
             for p in parts:
                 if b"\r\n\r\n" not in p:
                     continue
@@ -663,19 +662,40 @@ class H(http.server.BaseHTTPRequestHandler):
                 if nm and fnm and nm.group(1) == b"audio":
                     fn = fnm.group(1).decode("utf-8", "replace")
                     bl = body.rsplit(b"\r\n", 1)[0]
-                    if bl:
+                    if not bl:
+                        continue
+                    if os.path.splitext(fn)[1].lower() == ".txt":
+                        lyricfiles.append((fn, bl))
+                    else:
                         tracks.append((fn, bl))
-            if not tracks:
-                raise ValueError("no audio files in upload")
-            for fn, _ in tracks:
+            if not tracks and not lyricfiles:
+                raise ValueError("no audio or lyrics files in upload")
+            for fn, _ in tracks + lyricfiles:
                 ext = os.path.splitext(fn)[1].lower()
-                if ext not in AUDIO_EXTS:
-                    raise ValueError(f"audio type {ext or '?'} not accepted (wav/flac/ogg/mp3/m4a/webm)")
+                if ext not in AUDIO_EXTS and ext != ".txt":
+                    raise ValueError(f"file type {ext or '?'} not accepted (audio + .txt lyrics)")
         except Exception as e:
             return self._fail(e, "2")
-        _, ad, _ = run_paths()
+        _, ad, ald = run_paths()
         os.makedirs(ad, exist_ok=True)
+        os.makedirs(ald, exist_ok=True)
         done, errs = [], []
+        for fname, text in lyricfiles:
+            name = clean_name(os.path.splitext(os.path.basename(fname))[0])
+            if not name:
+                errs.append(f"{fname}: bad name")
+                continue
+            try:
+                lyr = text.decode("utf-8", "replace").strip()[:12000]
+            except Exception:
+                errs.append(f"{fname}: unreadable text")
+                continue
+            if not lyr:
+                errs.append(f"{fname}: empty lyrics")
+                continue
+            open(os.path.join(ad, name + ".lyrics.txt"), "w").write(lyr + "\n")
+            open(os.path.join(ald, name + ".lyrics.txt"), "w").write(lyr + "\n")
+            done.append(name + " (lyrics)")
         for fname, blob in tracks:
             name = clean_name(os.path.splitext(os.path.basename(fname))[0])
             if not name:
