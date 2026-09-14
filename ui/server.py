@@ -32,9 +32,20 @@ HTML = """<!DOCTYPE html><html><head><meta charset="utf-8">
 .play{width:52px;height:52px;border-radius:50%;border:0;background:linear-gradient(135deg,#7c3aed,#22d3ee);color:#fff;font-size:20px;margin:6px 8px 6px 0;vertical-align:middle}
 .seek{width:60%;vertical-align:middle;accent-color:#22d3ee}
 .dl{color:#22d3ee;text-decoration:none;font-size:14px}
-pre{background:#000;padding:10px;border-radius:8px;overflow:auto;max-height:220px;font-size:12px}</style></head>
+pre{background:#000;padding:10px;border-radius:8px;overflow:auto;max-height:220px;font-size:12px}.tabs{display:flex;gap:8px;margin:12px 0;position:sticky;top:0;background:#111;padding:8px 0;z-index:5}.tab{flex:1;padding:12px;border-radius:8px;border:1px solid #444;background:#1c1c1c;color:#eee;font-size:15px}.tab.on{background:#7c3aed;border-color:#7c3aed}</style></head>
 <body><h2>&#127926; FORGETITLE</h2>
-<!--STATIC_STATUS-->
+<div class="tabs"><button id="tb1" class="tab on" onclick="tab(1)">1 · Runs</button><button id="tb2" class="tab" onclick="tab(2)">2 · Dataset studio</button><button id="tb3" class="tab" onclick="tab(3)">3 · Training</button></div>
+<div id="pane1"><h3>Runs</h3>
+<div id="runs"></div>
+<div class="ckpt">new run<br>name <input id="nr_name" placeholder="artist_name" style="width:180px;background:#000;color:#eee;border:1px solid #444;border-radius:6px;padding:8px"> trigger <input id="nr_trig" placeholder="oneword or empty" style="width:160px;background:#000;color:#eee;border:1px solid #444;border-radius:6px;padding:8px"> <button onclick="mkRun()" style="padding:8px 16px;border-radius:6px;border:0;background:#7c3aed;color:#fff">Create + switch</button> <span id="nr_msg" class="muted"></span></div>
+<div class="ckpt">training — active run only<br>from <select id="tr_init" style="background:#000;color:#eee;border:1px solid #444;border-radius:6px;padding:8px"><option value="fresh">fresh</option><option value="last">last.pt</option><option value="best">best.pt</option></select> to step <input id="tr_steps" type="number" value="1600" style="width:90px;background:#000;color:#eee;border:1px solid #444;border-radius:6px;padding:8px"> <button onclick="startTrain()" style="padding:8px 16px;border-radius:6px;border:0;background:#22c55e;color:#000">Start training</button> <span id="tr_msg" class="muted"></span><br><span class="muted">needs dataset ready first (finish songs above, then prep via scripts/run_all.sh steps 1-3)</span></div>
+</div>
+<div id="pane2"><h3>Dataset studio <span class="muted" id="ds_run"></span></h3>
+<div class="ckpt">trigger word — empty means caption-only mode (style bleeds into everything)<br><input id="ds_trig" style="width:200px;background:#000;color:#eee;border:1px solid #444;border-radius:6px;padding:8px"> <button onclick="saveTrig()" style="padding:8px 16px;border-radius:6px;border:0;background:#7c3aed;color:#fff">Save</button> <span id="trig_msg" class="muted"></span><br><span class="muted" id="ds_count"></span></div>
+<div class="ckpt">new song audio — pick many at once (wav/flac/ogg/mp3/m4a, each converts to flac)<br><input type="file" id="up_file" multiple accept="audio/*,.wav,.flac,.ogg,.mp3,.m4a"> name (single file only) <input id="up_name" placeholder="song_name" style="width:180px;background:#000;color:#eee;border:1px solid #444;border-radius:6px;padding:8px"> <button onclick="upAudio()" style="padding:8px 16px;border-radius:6px;border:0;background:#7c3aed;color:#fff">Upload</button> <span id="up_msg" class="muted"></span></div>
+<div id="songs"></div><!--STATIC_SONGS-->
+</div>
+<div id="pane3"><!--STATIC_STATUS-->
 <div class="bar"><div class="fill" id="fill" style="width:FILLPCT%"></div></div>
 <div id="pct" class="muted"></div>
 <div class="grid">
@@ -45,14 +56,6 @@ pre{background:#000;padding:10px;border-radius:8px;overflow:auto;max-height:220p
 <div class="card">minted_val eval<div><b id="mval">-</b></div></div>
 <div class="card">ETA<div><b id="eta">-</b></div></div>
 </div>
-<h3>Runs</h3>
-<div id="runs"></div>
-<div class="ckpt">new run<br>name <input id="nr_name" placeholder="artist_name" style="width:180px;background:#000;color:#eee;border:1px solid #444;border-radius:6px;padding:8px"> trigger <input id="nr_trig" placeholder="oneword or empty" style="width:160px;background:#000;color:#eee;border:1px solid #444;border-radius:6px;padding:8px"> <button onclick="mkRun()" style="padding:8px 16px;border-radius:6px;border:0;background:#7c3aed;color:#fff">Create + switch</button> <span id="nr_msg" class="muted"></span></div>
-<div class="ckpt">training — active run only<br>from <select id="tr_init" style="background:#000;color:#eee;border:1px solid #444;border-radius:6px;padding:8px"><option value="fresh">fresh</option><option value="last">last.pt</option><option value="best">best.pt</option></select> to step <input id="tr_steps" type="number" value="1600" style="width:90px;background:#000;color:#eee;border:1px solid #444;border-radius:6px;padding:8px"> <button onclick="startTrain()" style="padding:8px 16px;border-radius:6px;border:0;background:#22c55e;color:#000">Start training</button> <span id="tr_msg" class="muted"></span><br><span class="muted">needs dataset ready first (finish songs above, then prep via scripts/run_all.sh steps 1-3)</span></div>
-<h3>Dataset studio <span class="muted" id="ds_run"></span></h3>
-<div class="ckpt">trigger word — empty means caption-only mode (style bleeds into everything)<br><input id="ds_trig" style="width:200px;background:#000;color:#eee;border:1px solid #444;border-radius:6px;padding:8px"> <button onclick="saveTrig()" style="padding:8px 16px;border-radius:6px;border:0;background:#7c3aed;color:#fff">Save</button> <span id="trig_msg" class="muted"></span><br><span class="muted" id="ds_count"></span></div>
-<div class="ckpt">new song audio (wav/flac/ogg/mp3/m4a, converts to flac)<br><input type="file" id="up_file" accept="audio/*,.wav,.flac,.ogg,.mp3,.m4a"> name <input id="up_name" placeholder="song_name" style="width:180px;background:#000;color:#eee;border:1px solid #444;border-radius:6px;padding:8px"> <button onclick="upAudio()" style="padding:8px 16px;border-radius:6px;border:0;background:#7c3aed;color:#fff">Upload</button> <span id="up_msg" class="muted"></span></div>
-<div id="songs"></div>
 <h3>Samples (your custom prompt below)</h3>
 <!--STATIC_SAMPLES-->
 <div id="samples"></div>
@@ -67,13 +70,14 @@ Seed <input id="f_seed" value="CFGSEED" type="number" style="width:100px;backgro
 <h3>Downloads</h3><!--STATIC_FILES--><div id="dl"></div>
 <h3>Log tail</h3><pre id="log">STATICLOG</pre>
 <div class="muted">V1</div>
+</div>
 <script>
 let dirty=false;for(const id of ['f_style','f_lyr','f_seed']){document.getElementById(id).addEventListener('input',()=>dirty=true);}
 let trigDirty=false,songsDirty=false;
 document.getElementById('ds_trig').addEventListener('input',()=>trigDirty=true);
 async function saveTrig(){const r=await fetch('/set_trigger',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({trigger:document.getElementById('ds_trig').value})});const d=await r.json();document.getElementById('trig_msg').textContent=d.ok?('saved: '+(d.trigger||'(caption-only mode)')):('error: '+d.error);trigDirty=false;tick();}
-async function saveSong(n){const st=document.getElementById('st_'+n).value,ly=document.getElementById('ly_'+n).value;
-const r=await fetch('/save_song',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({name:n,style:st,lyrics:ly})});const d=await r.json();
+async function saveSong(n){const st=document.getElementById('st_'+n).value,ly=document.getElementById('ly_'+n).value,tg=document.getElementById('tg_'+n).value;
+const r=await fetch('/save_song',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({name:n,style:st,lyrics:ly,trigger:tg})});const d=await r.json();
 document.getElementById('msg_'+n).textContent=d.ok?('saved'+(d.issues&&d.issues.length?' — still: '+d.issues.join('; '):' — ready ✔')):('error: '+d.error);songsDirty=false;tick();}
 async function delSong(n){if(!confirm('delete '+n+'?'))return;await fetch('/delete_song',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({name:n})});songsDirty=false;tick();}
 async function mkRun(){const m=document.getElementById('nr_msg');
@@ -83,12 +87,17 @@ async function switchRun(n){await fetch('/switch_run',{method:'POST',headers:{'C
 async function startTrain(){const m=document.getElementById('tr_msg');m.textContent='launching...';
 const r=await fetch('/start_training',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({init:document.getElementById('tr_init').value,steps:parseInt(document.getElementById('tr_steps').value||'1600')})});const d=await r.json();
 m.textContent=d.ok?('training '+d.run+' '+d.from_step+'→'+d.to_step):('error: '+d.error);tick();}
-async function upAudio(){const f=document.getElementById('up_file').files[0];const m=document.getElementById('up_msg');
-if(!f){m.textContent='pick a file first';return;}
-const n=document.getElementById('up_name').value||f.name.replace(/\.[^.]+$/,'');
-m.textContent='uploading + converting...';const fd=new FormData();fd.append('audio',f,f.name);
+async function upAudio(){const fs=document.getElementById('up_file').files;const m=document.getElementById('up_msg');
+if(!fs.length){m.textContent='pick files first';return;}
+const only=document.getElementById('up_name').value;let ok=0;
+for(let i=0;i<fs.length;i++){const f=fs[i];
+const n=(fs.length===1&&only)?only:f.name.replace(/\.[^.]+$/,'');
+m.textContent='uploading '+(i+1)+'/'+fs.length+': '+f.name+'...';
+const fd=new FormData();fd.append('audio',f,f.name);
 try{const r=await fetch('/upload_audio?name='+encodeURIComponent(n),{method:'POST',body:fd});const d=await r.json();
-m.textContent=d.ok?('done: '+d.mb+' MB flac — now add caption + lyrics below'):('error: '+d.error);}catch(e){m.textContent='upload failed: '+e.message;}tick();}
+if(d.ok)ok++;else{m.textContent='error on '+f.name+': '+d.error;break;}}catch(e){m.textContent='upload failed: '+e.message;break;}}
+m.textContent+=' — done '+ok+'/'+fs.length+' — now add captions + lyrics below';
+document.getElementById('up_file').value='';document.getElementById('up_name').value='';tick();}
 const players={};
 async function togglePlay(step,file,btn){
 let p=players[step];
@@ -107,6 +116,7 @@ a.onended=()=>{btn.textContent='\u25B6';};
 seek.oninput=()=>{a.currentTime=seek.value;};
 players[step]={audio:a};btn.textContent='\u23F8';a.play();
 }catch(e){btn.textContent='\u25B6';document.getElementById('t'+step).textContent='load failed, retry';}}
+function tab(n){for(let i=1;i<=3;i++){document.getElementById('pane'+i).style.display=i===n?'block':'none';document.getElementById('tb'+i).className='tab'+(i===n?' on':'');}}
 let lastSig='';
 async function saveCfg(){const b={style:document.getElementById('f_style').value,lyrics:document.getElementById('f_lyr').value,seed:parseInt(document.getElementById('f_seed').value||'12')};
 const r=await fetch('/save_cfg',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify(b)});const d=await r.json();
@@ -144,10 +154,12 @@ document.getElementById('ds_count').textContent=d.studio.ready+' / '+d.studio.to
 if(!trigDirty)document.getElementById('ds_trig').value=d.studio.trigger||'';
 if(!songsDirty){let q='';if(!d.studio.songs.length)q='<div class="muted">no songs yet — upload audio above, then add caption + lyrics per song</div>';
 for(const x of d.studio.songs){const ok=x.issues.length===0;
-q+='<div class="ckpt"><b>'+x.name+'</b> '+(x.audio?'<span class="muted">'+x.audio.mb+' MB flac</span>':'<span class="muted">no audio</span>')+' '+(ok?'\u2714 ready':'<span style="color:#f59e0b">'+x.issues.join('; ')+'</span>')+'<br>style<br><input id="st_'+x.name+'" oninput="songsDirty=true" value="'+String(x.style).replace(/&/g,'&amp;').replace(/"/g,'&quot;').replace(/</g,'&lt;')+'" style="width:100%;background:#000;color:#eee;border:1px solid #444;border-radius:6px;padding:8px"><br>lyrics<br><textarea id="ly_'+x.name+'" oninput="songsDirty=true" rows="6" style="width:100%;background:#000;color:#eee;border:1px solid #444;border-radius:6px;padding:8px">'+String(x.lyrics).replace(/&/g,'&amp;').replace(/</g,'&lt;')+'</textarea><br><button onclick="saveSong(\''+x.name+'\')" style="padding:6px 14px;border-radius:6px;border:0;background:#7c3aed;color:#fff">Save</button> <button onclick="delSong(\''+x.name+'\')" style="padding:6px 14px;border-radius:6px;border:1px solid #666;background:#222;color:#eee">Delete</button> <span id="msg_'+x.name+'" class="muted"></span></div>';}
+const esc=s=>String(s).replace(/&/g,'&amp;').replace(/"/g,'&quot;').replace(/</g,'&lt;');
+const aud=x.audio?'<audio controls preload="none" style="width:100%" src="/a/'+d.studio.run+'/'+x.audio.file+'"></audio><br>':'';
+q+='<div class="ckpt"><b>'+x.name+'</b> '+(x.audio?'<span class="muted">'+x.audio.mb+' MB flac</span>':'<span class="muted">no audio</span>')+' '+(ok?'\u2714 ready':'<span style="color:#f59e0b">'+x.issues.join('; ')+'</span>')+'<br>'+aud+'trigger (empty = run default)<br><input id="tg_'+x.name+'" oninput="songsDirty=true" value="'+esc(x.trig)+'" placeholder="run default: '+esc(d.studio.trigger||'(none)')+'" style="width:220px;background:#000;color:#eee;border:1px solid #444;border-radius:6px;padding:8px"><br>style / caption<br><input id="st_'+x.name+'" oninput="songsDirty=true" value="'+esc(x.style)+'" style="width:100%;background:#000;color:#eee;border:1px solid #444;border-radius:6px;padding:8px"><br>lyrics<br><textarea id="ly_'+x.name+'" oninput="songsDirty=true" rows="6" style="width:100%;background:#000;color:#eee;border:1px solid #444;border-radius:6px;padding:8px">'+esc(x.lyrics)+'</textarea><br><button onclick="saveSong(\''+x.name+'\')" style="padding:6px 14px;border-radius:6px;border:0;background:#7c3aed;color:#fff">Save</button> <button onclick="delSong(\''+x.name+'\')" style="padding:6px 14px;border-radius:6px;border:1px solid #666;background:#222;color:#eee">Delete</button> <span id="msg_'+x.name+'" class="muted"></span></div>';}
 document.getElementById('songs').innerHTML=q;}}
 if(!dirty&&d.cfg){document.getElementById('f_style').value=d.cfg.style;document.getElementById('f_lyr').value=d.cfg.lyrics;document.getElementById('f_seed').value=d.cfg.seed;}
-}catch(e){document.getElementById('pct').textContent='connection error ('+e.message+'), retrying...';}}tick();setInterval(tick,3000);</script></body></html>"""
+}catch(e){document.getElementById('pct').textContent='connection error ('+e.message+'), retrying...';}}tick();setInterval(tick,3000);tab(1);</script></body></html>"""
 
 def snapshot():
     d = {"step": 0, "pct": 0.0, "phase": "starting", "loss": "-", "artist_eval": "-",
@@ -275,6 +287,17 @@ def run_trigger(name=None):
         return json.load(open(os.path.join(run_paths(name)[0], "config.json"))).get("trigger", "")
     except Exception:
         return ""
+def _songs_meta(name=None):
+    try:
+        return json.load(open(os.path.join(run_paths(name)[0], "songs.json")))
+    except Exception:
+        return {}
+def _save_songs_meta(name, meta):
+    base, _, _ = run_paths(name)
+    os.makedirs(base, exist_ok=True)
+    json.dump(meta, open(os.path.join(base, "songs.json"), "w"))
+def song_trigger(run, song):
+    return _songs_meta(run).get(song, {}).get("trigger", "") or run_trigger(run)
 def clean_name(n):
     return re.sub(r"[^a-z0-9_]+", "_", (n or "").strip().lower()).strip("_")[:48]
 def validate_song(base, ad, trig):
@@ -314,7 +337,14 @@ def studio_snapshot():
         elif os.path.splitext(fn)[1].lower() in AUDIO_EXTS:
             bases.add(os.path.splitext(fn)[0])
     trig = run_trigger()
-    songs = [validate_song(b, ad, trig) for b in sorted(bases) if clean_name(b) == b]
+    meta = _songs_meta()
+    songs = []
+    for b in sorted(bases):
+        if clean_name(b) != b:
+            continue
+        v = validate_song(b, ad, meta.get(b, {}).get("trigger", "") or trig)
+        v["trig"] = meta.get(b, {}).get("trigger", "")
+        songs.append(v)
     ok = sum(1 for s in songs if not s["issues"])
     return {"run": active_run(), "trigger": trig, "songs": songs,
             "ready": ok, "total": len(songs)}
@@ -406,6 +436,19 @@ class H(http.server.BaseHTTPRequestHandler):
                 return
             ctype = "text/plain" if fn.endswith(".log") else "application/octet-stream"
             self._send(os.path.join(dd, fn), ctype, attach=True, name=fn)
+        elif self.path.startswith("/a/"):
+            parts = self.path[3:].split("/", 1)
+            if len(parts) != 2:
+                self.send_error(404)
+                return
+            rn, fn = parts[0], os.path.basename(parts[1])
+            if clean_name(rn) != rn or os.path.splitext(fn)[1].lower() not in AUDIO_EXTS:
+                self.send_error(404)
+                return
+            p = os.path.join(run_paths(rn)[1], fn)
+            ctype = {"flac": "audio/flac", "wav": "audio/wav", "ogg": "audio/ogg",
+                     "mp3": "audio/mpeg", "m4a": "audio/mp4"}.get(os.path.splitext(fn)[1].lower()[1:], "audio/mpeg")
+            self._send(p, ctype)
         elif self.path.startswith("/m/"):
             fn = os.path.basename(self.path[3:])
             if ".." in fn or not re.match(r"[A-Za-z0-9_]+_s\d+\.(mp3|flac)$", fn):
@@ -428,7 +471,13 @@ class H(http.server.BaseHTTPRequestHandler):
                     ff += f"<div class='ckpt'><b>{cur}</b><br>"
                     ff += "<br>".join(f"<a class='dl' href='/d/{y['g']}/{y['file']}'>{y['file']}</a> <span class='muted'>{y['mb']} MB</span>" for y in d["files"] if y["g"] == cur)
                     ff += "</div>"
-            b = HTML.replace("<!--STATIC_STATUS-->", st).replace("<!--STATIC_SAMPLES-->", ss or "<div class='muted'>no samples yet</div>").replace("<!--STATIC_FILES-->", ff).replace("FILLPCT", str(d["pct"]))
+            sg = ""
+            for x in d["studio"]["songs"]:
+                auf = x["audio"]["file"] if x["audio"] else ""
+                player = f"<audio controls preload='none' style='width:100%' src='/a/{d['studio']['run']}/{auf}'></audio><br>" if auf else ""
+                flag = "ready ✔" if not x["issues"] else " — ".join(x["issues"])
+                sg += f"<div class='ckpt'><b>{x['name']}</b> <span class='muted'>{x['lines']} lines, {x['audio']['mb'] if x['audio'] else 0} MB</span><br>{player}<span class='muted'>{flag}</span></div>"
+            b = HTML.replace("<!--STATIC_STATUS-->", st).replace("<!--STATIC_SAMPLES-->", ss or "<div class='muted'>no samples yet</div>").replace("<!--STATIC_FILES-->", ff).replace("FILLPCT", str(d["pct"])).replace("<!--STATIC_SONGS-->", sg or "<div class='muted'>no songs yet</div>")
             b = b.replace('<b id="step">-</b>', f"<b id=\"step\">{d['step_est']}</b>").replace('<b id="phase">-</b>', f"<b id=\"phase\">{d['phase']}</b>").replace('<b id="loss">-</b>', f"<b id=\"loss\">{d['loss']}</b>").replace('<b id="eval">-</b>', f"<b id=\"eval\">{d['artist_eval']}</b>").replace('<b id="mval">-</b>', f"<b id=\"mval\">{d['minted_eval']}</b>")
             b = b.replace('<b id="eta">-</b>', f"<b id=\"eta\">{d['eta']}</b>")
             b = b.replace("FORGETITLE", _h.escape(os.environ.get("FORGE_TITLE", "yue2-forge training")))
@@ -499,6 +548,7 @@ class H(http.server.BaseHTTPRequestHandler):
             name = clean_name(c.get("name", ""))
             style = str(c.get("style", "")).strip()[:1500]
             lyrics = str(c.get("lyrics", "")).strip()[:12000]
+            strig = re.sub(r"[^a-z0-9]+", "", str(c.get("trigger", "")).strip().lower())[:32] if "trigger" in c else None
             if not name:
                 raise ValueError("song name required (letters, numbers, _)")
             if not style or not lyrics:
@@ -512,7 +562,14 @@ class H(http.server.BaseHTTPRequestHandler):
         open(os.path.join(ad, name + ".txt"), "w").write(style + "\n")
         open(os.path.join(ad, name + ".lyrics.txt"), "w").write(lyrics + "\n")
         open(os.path.join(ald, name + ".lyrics.txt"), "w").write(lyrics + "\n")
-        v = validate_song(name, ad, run_trigger())
+        if strig is not None:
+            meta = _songs_meta()
+            if strig:
+                meta.setdefault(name, {})["trigger"] = strig
+            elif name in meta and "trigger" in meta[name]:
+                del meta[name]["trigger"]
+            _save_songs_meta(active_run(), meta)
+        v = validate_song(name, ad, strig if strig is not None else run_trigger())
         self._json({"ok": True, "issues": v["issues"]})
     def _post_delete_song(self):
         raw = self._body(2000)
@@ -591,11 +648,23 @@ class H(http.server.BaseHTTPRequestHandler):
         tmp = os.path.join(ad, name + ".incoming" + ext)
         open(tmp, "wb").write(blob)
         out = os.path.join(ad, name + ".flac")
-        r = subprocess.run(["ffmpeg", "-y", "-v", "error", "-i", tmp, "-c:a", "flac", out],
-                           capture_output=True)
-        os.remove(tmp)
+        try:
+            r = subprocess.run(["ffmpeg", "-y", "-v", "error", "-i", tmp, "-c:a", "flac", out],
+                               capture_output=True, timeout=600)
+        except Exception as e:
+            try:
+                os.remove(tmp)
+            except Exception:
+                pass
+            self._json({"ok": False, "error": f"audio convert failed: {str(e)[:100]}"})
+            return
+        try:
+            os.remove(tmp)
+        except Exception:
+            pass
         if r.returncode != 0 or not os.path.exists(out):
-            self._json({"ok": False, "error": "ffmpeg could not read that audio"})
+            err = (r.stderr or b"").decode("utf-8", "replace")[-200:]
+            self._json({"ok": False, "error": f"ffmpeg rejected it ({err or 'unknown'})"})
             return
         self._json({"ok": True, "mb": round(os.path.getsize(out) / 2**20, 1)})
     def _repoint(self, link, target):
