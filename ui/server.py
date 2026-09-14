@@ -45,6 +45,10 @@ pre{background:#000;padding:10px;border-radius:8px;overflow:auto;max-height:220p
 <div class="card">minted_val eval<div><b id="mval">-</b></div></div>
 <div class="card">ETA<div><b id="eta">-</b></div></div>
 </div>
+<h3>Runs</h3>
+<div id="runs"></div>
+<div class="ckpt">new run<br>name <input id="nr_name" placeholder="artist_name" style="width:180px;background:#000;color:#eee;border:1px solid #444;border-radius:6px;padding:8px"> trigger <input id="nr_trig" placeholder="oneword or empty" style="width:160px;background:#000;color:#eee;border:1px solid #444;border-radius:6px;padding:8px"> <button onclick="mkRun()" style="padding:8px 16px;border-radius:6px;border:0;background:#7c3aed;color:#fff">Create + switch</button> <span id="nr_msg" class="muted"></span></div>
+<div class="ckpt">training — active run only<br>from <select id="tr_init" style="background:#000;color:#eee;border:1px solid #444;border-radius:6px;padding:8px"><option value="fresh">fresh</option><option value="last">last.pt</option><option value="best">best.pt</option></select> to step <input id="tr_steps" type="number" value="1600" style="width:90px;background:#000;color:#eee;border:1px solid #444;border-radius:6px;padding:8px"> <button onclick="startTrain()" style="padding:8px 16px;border-radius:6px;border:0;background:#22c55e;color:#000">Start training</button> <span id="tr_msg" class="muted"></span><br><span class="muted">needs dataset ready first (finish songs above, then prep via scripts/run_all.sh steps 1-3)</span></div>
 <h3>Dataset studio <span class="muted" id="ds_run"></span></h3>
 <div class="ckpt">trigger word — empty means caption-only mode (style bleeds into everything)<br><input id="ds_trig" style="width:200px;background:#000;color:#eee;border:1px solid #444;border-radius:6px;padding:8px"> <button onclick="saveTrig()" style="padding:8px 16px;border-radius:6px;border:0;background:#7c3aed;color:#fff">Save</button> <span id="trig_msg" class="muted"></span><br><span class="muted" id="ds_count"></span></div>
 <div class="ckpt">new song audio (wav/flac/ogg/mp3/m4a, converts to flac)<br><input type="file" id="up_file" accept="audio/*,.wav,.flac,.ogg,.mp3,.m4a"> name <input id="up_name" placeholder="song_name" style="width:180px;background:#000;color:#eee;border:1px solid #444;border-radius:6px;padding:8px"> <button onclick="upAudio()" style="padding:8px 16px;border-radius:6px;border:0;background:#7c3aed;color:#fff">Upload</button> <span id="up_msg" class="muted"></span></div>
@@ -72,6 +76,13 @@ async function saveSong(n){const st=document.getElementById('st_'+n).value,ly=do
 const r=await fetch('/save_song',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({name:n,style:st,lyrics:ly})});const d=await r.json();
 document.getElementById('msg_'+n).textContent=d.ok?('saved'+(d.issues&&d.issues.length?' — still: '+d.issues.join('; '):' — ready ✔')):('error: '+d.error);songsDirty=false;tick();}
 async function delSong(n){if(!confirm('delete '+n+'?'))return;await fetch('/delete_song',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({name:n})});songsDirty=false;tick();}
+async function mkRun(){const m=document.getElementById('nr_msg');
+const r=await fetch('/create_run',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({name:document.getElementById('nr_name').value,trigger:document.getElementById('nr_trig').value})});const d=await r.json();
+m.textContent=d.ok?('created + active: '+d.run):('error: '+d.error);tick();}
+async function switchRun(n){await fetch('/switch_run',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({name:n})});tick();}
+async function startTrain(){const m=document.getElementById('tr_msg');m.textContent='launching...';
+const r=await fetch('/start_training',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({init:document.getElementById('tr_init').value,steps:parseInt(document.getElementById('tr_steps').value||'1600')})});const d=await r.json();
+m.textContent=d.ok?('training '+d.run+' '+d.from_step+'→'+d.to_step):('error: '+d.error);tick();}
 async function upAudio(){const f=document.getElementById('up_file').files[0];const m=document.getElementById('up_msg');
 if(!f){m.textContent='pick a file first';return;}
 const n=document.getElementById('up_name').value||f.name.replace(/\.[^.]+$/,'');
@@ -110,8 +121,11 @@ document.getElementById('eval').textContent=d.artist_eval;
 document.getElementById('mval').textContent=d.minted_eval;
 document.getElementById('eta').textContent=d.eta;
 document.getElementById('log').textContent=d.log_tail;
-const sig=JSON.stringify([d.samples,d.checkpoints,d.files,d.studio]);
+const sig=JSON.stringify([d.samples,d.checkpoints,d.files,d.studio,d.runs]);
 if(sig!==lastSig){lastSig=sig;
+let r='';for(const x of d.runs.runs){const act=x.name===d.runs.active;
+r+='<div class="ckpt">'+(act?'<b>'+x.name+' (active)</b>': '<b>'+x.name+'</b> <button onclick="switchRun(\''+x.name+'\')" style="padding:4px 12px;border-radius:6px;border:1px solid #666;background:#222;color:#eee">Switch</button>')+' <span class="muted">'+x.ready+'/'+x.total+' songs'+(x.ckpts.length?' | ckpts '+x.ckpts.join(','):'')+(x.best?' | best ✔':'')+'</span></div>';}
+document.getElementById('runs').innerHTML=r||'<div class="muted">no runs yet — create one below</div>';
 let s='';if(d.samples.length==0){s='no samples yet - first one lands at step 600';}
 for(const x of d.samples){s+='<div class="ckpt"><b>step '+x.step+'</b> <span class="muted">'+x.secs+'s</span><br><button class="play" onclick="togglePlay('+x.step+',\''+x.file+'\',this)">\u25B6</button><input class="seek" type="range" id="seek'+x.step+'" value="0" step="0.1"> <span id="t'+x.step+'" class="muted">0:00</span><div class="bar" style="height:6px"><div class="fill" id="bar'+x.step+'"></div></div><a class="dl" href="/m/'+x.file+'" download="'+x.file+'">\u2B07 Download MP3</a></div>';}
 document.getElementById('samples').innerHTML=s;
@@ -137,7 +151,7 @@ if(!dirty&&d.cfg){document.getElementById('f_style').value=d.cfg.style;document.
 
 def snapshot():
     d = {"step": 0, "pct": 0.0, "phase": "starting", "loss": "-", "artist_eval": "-",
-         "minted_eval": "-", "eta": "-", "note": "", "checkpoints": [], "samples": [], "files": [], "log_tail": "", "step_est": 0, "cfg": {}, "studio": {}}
+         "minted_eval": "-", "eta": "-", "note": "", "checkpoints": [], "samples": [], "files": [], "log_tail": "", "step_est": 0, "cfg": {}, "studio": {}, "runs": {"active": "", "runs": []}}
     try:
         lines = open(LOG, errors="replace").read().splitlines()
     except Exception:
@@ -183,14 +197,15 @@ def snapshot():
     else:
         d["phase"] = "paused"
         d["note"] = "process not running"
-    for f in sorted(glob.glob(f"{OUT}/step-*.pt")):
+    sp = re.escape(active_run()) + r"_s"
+    for f in sorted(glob.glob(os.path.join(ckdir(), "step-*.pt"))):
         m = re.search(r"step-(\d+)", f)
         if m:
             s = int(m.group(1))
             d["checkpoints"].append({"step": s, "mb": round(os.path.getsize(f) / 2**20),
-                "sampled": bool(glob.glob(f"{GEN}/tonydize_s{s}.*"))})
-    for f in sorted(glob.glob(f"{GEN}/tonydize_s*.mp3")) + sorted(glob.glob(f"{GEN}/tonydize_s*.flac")):
-        m = re.search(r"tonydize_s(\d+)", os.path.basename(f))
+                "sampled": bool(glob.glob(os.path.join(GEN, active_run() + f"_s{s}.*")))})
+    for f in sorted(glob.glob(os.path.join(GEN, active_run() + "_s*.mp3"))) + sorted(glob.glob(os.path.join(GEN, active_run() + "_s*.flac"))):
+        m = re.search(sp + r"(\d+)", os.path.basename(f))
         if m and not any(x["step"] == int(m.group(1)) for x in d["samples"]):
             secs = ""
             try:
@@ -201,6 +216,7 @@ def snapshot():
             d["samples"].append({"step": int(m.group(1)), "file": os.path.basename(f), "secs": secs})
     d["samples"].sort(key=lambda x: x["step"])
     for g, (dd, rx) in DL.items():
+        dd = dl_resolve(dd)
         for f in sorted(glob.glob(os.path.join(dd, "*"))):
             if re.match(rx, os.path.basename(f)):
                 d["files"].append({"g": g, "file": os.path.basename(f),
@@ -231,6 +247,7 @@ def snapshot():
         ly = ""
     d["cfg"] = {"style": st, "lyrics": ly, "seed": cfg.get("seed", 12)}
     d["studio"] = studio_snapshot()
+    d["runs"] = runs_snapshot()
     return d
 
 def _registry():
@@ -238,6 +255,15 @@ def _registry():
         return json.load(open(os.path.join(RUNS, "registry.json")))
     except Exception:
         return {}
+def _save_registry(r):
+    os.makedirs(RUNS, exist_ok=True)
+    json.dump(r, open(os.path.join(RUNS, "registry.json"), "w"))
+def active_run():
+    return _registry().get("active") or os.environ.get("RUN_NAME", "my_lora")
+def ckdir():
+    return os.path.join("/workspace/tok/full", active_run())
+def dl_resolve(dd):
+    return ckdir() if dd == OUT else dd
 def active_run():
     return _registry().get("active") or os.environ.get("RUN_NAME", "my_lora")
 def run_paths(name=None):
@@ -292,6 +318,32 @@ def studio_snapshot():
     ok = sum(1 for s in songs if not s["issues"])
     return {"run": active_run(), "trigger": trig, "songs": songs,
             "ready": ok, "total": len(songs)}
+def runs_snapshot():
+    try:
+        names = sorted(d for d in os.listdir(RUNS) if os.path.isdir(os.path.join(RUNS, d)))
+    except Exception:
+        names = []
+    out = []
+    for n in names:
+        base, ad, _ = run_paths(n)
+        trig = run_trigger(n)
+        try:
+            created = json.load(open(os.path.join(base, "config.json"))).get("created", "")
+        except Exception:
+            created = ""
+        ready = total = 0
+        for f in glob.glob(os.path.join(ad, "*.lyrics.txt")):
+            b = os.path.basename(f)[:-11]
+            if clean_name(b) != b:
+                continue
+            total += 1
+            if not validate_song(b, ad, trig)["issues"]:
+                ready += 1
+        ckd = os.path.join("/workspace/tok/full", n)
+        ckpts = sorted(int(m.group(1)) for f in glob.glob(os.path.join(ckd, "step-*.pt")) for m in [re.search(r"step-(\d+)", f)] if m)
+        out.append({"name": n, "created": created, "ready": ready, "total": total,
+                    "ckpts": ckpts, "best": os.path.exists(os.path.join(ckd, "best.pt"))})
+    return {"active": active_run(), "runs": out}
 
 class H(http.server.BaseHTTPRequestHandler):
     def log_message(self, *a):
@@ -348,6 +400,7 @@ class H(http.server.BaseHTTPRequestHandler):
                 return
             g, fn = parts
             dd, rx = DL[g]
+            dd = dl_resolve(dd)
             if "/" in fn or "\\" in fn or not re.match(rx, fn):
                 self.send_error(404)
                 return
@@ -355,7 +408,7 @@ class H(http.server.BaseHTTPRequestHandler):
             self._send(os.path.join(dd, fn), ctype, attach=True, name=fn)
         elif self.path.startswith("/m/"):
             fn = os.path.basename(self.path[3:])
-            if ".." in fn or not re.match(r"tonydize_s\d+\.(mp3|flac)$", fn):
+            if ".." in fn or not re.match(r"[A-Za-z0-9_]+_s\d+\.(mp3|flac)$", fn):
                 self.send_error(404)
                 return
             self._send(os.path.join(GEN, fn),
@@ -400,6 +453,12 @@ class H(http.server.BaseHTTPRequestHandler):
             return self._post_set_trigger()
         if path == "/upload_audio":
             return self._post_upload_audio()
+        if path == "/create_run":
+            return self._post_create_run()
+        if path == "/switch_run":
+            return self._post_switch_run()
+        if path == "/start_training":
+            return self._post_start_training()
         self.send_error(404)
     def _body(self, limit):
         try:
@@ -539,6 +598,117 @@ class H(http.server.BaseHTTPRequestHandler):
             self._json({"ok": False, "error": "ffmpeg could not read that audio"})
             return
         self._json({"ok": True, "mb": round(os.path.getsize(out) / 2**20, 1)})
+    def _repoint(self, link, target):
+        os.makedirs(os.path.dirname(link), exist_ok=True)
+        os.makedirs(target, exist_ok=True)
+        if os.path.islink(link):
+            os.remove(link)
+        elif os.path.isdir(link):
+            if os.listdir(link):
+                raise ValueError(f"real data in the way at {link} — move it first")
+            os.rmdir(link)
+        elif os.path.exists(link):
+            raise ValueError(f"blocked at {link}")
+        os.symlink(target, link)
+    def _post_create_run(self):
+        raw = self._body(4000)
+        if raw is None:
+            self._json({"ok": False, "error": "bad size"})
+            return
+        try:
+            c = json.loads(raw)
+            name = clean_name(c.get("name", ""))
+            trig = re.sub(r"[^a-z0-9]+", "", str(c.get("trigger", "")).strip().lower())[:32]
+            if not name:
+                raise ValueError("run name required (letters, numbers, _)")
+            base = os.path.join(RUNS, name)
+            if os.path.exists(base):
+                raise ValueError("run already exists — switch to it instead")
+        except Exception as e:
+            self._json({"ok": False, "error": str(e)[:120]})
+            return
+        os.makedirs(os.path.join(base, "artist"), exist_ok=True)
+        os.makedirs(os.path.join(base, "artist_lyrics"), exist_ok=True)
+        import time as _t
+        json.dump({"trigger": trig, "created": _t.strftime("%Y-%m-%d %H:%M")}, open(os.path.join(base, "config.json"), "w"))
+        reg = _registry()
+        reg.setdefault("runs", {})[name] = {"created": _t.strftime("%Y-%m-%d %H:%M")}
+        reg["active"] = name
+        _save_registry(reg)
+        try:
+            self._repoint("/workspace/real/artist", os.path.join(base, "artist"))
+            self._repoint("/workspace/real/artist_lyrics", os.path.join(base, "artist_lyrics"))
+        except Exception as e:
+            self._json({"ok": False, "error": str(e)[:150]})
+            return
+        self._json({"ok": True, "run": name})
+    def _post_switch_run(self):
+        raw = self._body(2000)
+        if raw is None:
+            self._json({"ok": False, "error": "bad size"})
+            return
+        try:
+            name = clean_name(json.loads(raw).get("name", ""))
+            base = os.path.join(RUNS, name)
+            if not name or not os.path.isdir(base):
+                raise ValueError("unknown run")
+        except Exception as e:
+            self._json({"ok": False, "error": str(e)[:120]})
+            return
+        try:
+            self._repoint("/workspace/real/artist", os.path.join(base, "artist"))
+            self._repoint("/workspace/real/artist_lyrics", os.path.join(base, "artist_lyrics"))
+        except Exception as e:
+            self._json({"ok": False, "error": str(e)[:150]})
+            return
+        reg = _registry()
+        reg["active"] = name
+        _save_registry(reg)
+        self._json({"ok": True, "run": name})
+    def _post_start_training(self):
+        if subprocess.run(["pgrep", "-f", "ar_train|ar_lora_"], capture_output=True).returncode == 0:
+            self._json({"ok": False, "error": "training already running"})
+            return
+        raw = self._body(4000)
+        if raw is None:
+            self._json({"ok": False, "error": "bad size"})
+            return
+        try:
+            c = json.loads(raw) if raw else {}
+            total = max(200, min(5000, int(c.get("steps", 1600))))
+            init = str(c.get("init", "fresh"))
+            name = active_run()
+            ckd = os.path.join("/workspace/tok/full", name)
+            if not os.path.exists("/workspace/real/ar/dataset.pt"):
+                raise ValueError("no dataset yet — finish songs, then run prep (scripts/run_all.sh steps 1-3)")
+            start, initpt = 0, "none"
+            if init != "fresh":
+                cand = {"last": "last.pt", "best": "best.pt"}.get(init, init if re.match(r"^step-\d+\.pt$", init) else None)
+                if not cand:
+                    raise ValueError("init must be fresh, last, best, or step-N.pt")
+                initpt = os.path.join(ckd, cand)
+                if not os.path.exists(initpt):
+                    raise ValueError(f"checkpoint not found: {cand}")
+                m = re.search(r"step-(\d+)", cand)
+                start = int(m.group(1)) if m else 0
+            if total <= start:
+                raise ValueError(f"steps must exceed {start} when resuming")
+        except Exception as e:
+            self._json({"ok": False, "error": str(e)[:150]})
+            return
+        repo = os.environ.get("FORGE_REPO", "/workspace/yue2-forge")
+        train_py = os.path.join(repo, "scripts", "ar_train.py")
+        if not os.path.exists(train_py):
+            self._json({"ok": False, "error": "trainer script missing on server"})
+            return
+        env = dict(os.environ, HF_HOME="/workspace/hf", SCHED_STEPS="3000",
+                   CK_FROM="600", CK_EVERY="200", START_STEP=str(start))
+        log = open("/workspace/ar_train.log", "a")
+        subprocess.Popen(["/workspace/yue2venv/bin/python", "-u", train_py, name,
+                          str(total - start), "64", "0.5", initpt, "1e-4", "0.08"],
+                         stdout=log, stderr=subprocess.STDOUT, stdin=subprocess.DEVNULL,
+                         start_new_session=True, env=env)
+        self._json({"ok": True, "run": name, "from_step": start, "to_step": total})
     def _json(self, obj):
         b = json.dumps(obj).encode()
         self.send_response(200)

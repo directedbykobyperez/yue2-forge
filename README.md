@@ -50,6 +50,17 @@ bash scripts/run_all.sh
 
 Monitor at `http://<server>:8000` (or open a cloudflared tunnel for a public link).
 
+## Access: localhost vs public link
+
+- **Own machine / own GPU box → just open `http://localhost:8000`.**
+  That's the normal way. The dashboard binds to localhost, no setup needed.
+- **Remote headless server (like a Modal pod) with no browser → public link.**
+  On the server: download cloudflared and run
+  `cloudflared tunnel --url http://localhost:8000`, then open the
+  `*.trycloudflare.com` URL it prints. The tunnel dies with the box —
+  recreate it per session. Keep the link private: anyone holding it can
+  view progress, play samples, and download your LoRAs.
+
 ## Layout
 
 | path | what |
