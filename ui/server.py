@@ -737,6 +737,7 @@ class H(http.server.BaseHTTPRequestHandler):
                         continue
                     if os.path.splitext(fn)[1].lower() == ".txt":
                         lyricfiles.append((fn, bl))
+                    else:
                         tracks.append((fn, bl))
             if not tracks and not lyricfiles:
                 raise ValueError("no audio or lyrics files in upload")
