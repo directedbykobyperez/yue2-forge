@@ -790,6 +790,12 @@ class H(http.server.BaseHTTPRequestHandler):
                 pass
             if r.returncode != 0 or not os.path.exists(out):
                 errs.append(f"{fname}: ffmpeg rejected it")
+            elif os.path.getsize(out) < 100 * 1024:
+                try:
+                    os.remove(out)
+                except Exception:
+                    pass
+                errs.append(f"{fname}: arrived empty (0 bytes) — retry the upload")
             else:
                 done.append(name)
         if not done:
