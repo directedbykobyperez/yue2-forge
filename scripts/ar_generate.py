@@ -19,7 +19,14 @@ def merge(attn_name, mlp_name, tensors, scale=1.0):
     return n_merged
 with torch.no_grad():
     AR_SCALE=float(os.environ.get("AR_SCALE","1.0"))
-    if AR_CK!="none": ar=torch.load(AR_CK,map_location=dev); print(f"merged AR linears (scale {AR_SCALE}):", merge("self_attn","mlp",ar["lora"],AR_SCALE), flush=True)
+    if AR_CK!="none":
+        if AR_CK.endswith(".safetensors"):
+            from safetensors.torch import load_file as _sload
+            from export_safetensors import from_dict as _sfrom
+            ar = _sfrom({k: v.to(dev) for k, v in _sload(AR_CK, device="cpu").items()})
+        else:
+            ar=torch.load(AR_CK,map_location=dev)
+        print(f"merged AR linears (scale {AR_SCALE}):", merge("self_attn","mlp",ar["lora"],AR_SCALE), flush=True)
     else: print("AR: stock (no LoRA)", flush=True)
     if NAR_CK!="none":
         nar=torch.load(NAR_CK,map_location=dev); print("merged NAR linears:", merge("nar_self_attn","nar_mlp",nar["lora"]), flush=True)
