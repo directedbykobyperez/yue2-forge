@@ -36,15 +36,16 @@ HTML = """<!DOCTYPE html><html><head><meta charset="utf-8">
 pre{background:#000;padding:10px;border-radius:8px;overflow:auto;max-height:220px;font-size:12px}.tabs{display:flex;gap:8px;margin:12px 0;position:sticky;top:0;background:#111;padding:8px 0;z-index:5}.tab{flex:1;padding:12px;border-radius:8px;border:1px solid #444;background:#1c1c1c;color:#eee;font-size:15px;text-align:center;cursor:pointer}.tab.on{background:#7c3aed;border-color:#7c3aed}.tabradio{position:absolute;opacity:0;pointer-events:none}#pane1,#pane2,#pane3{display:none}#t1:checked~#pane1,#t2:checked~#pane2,#t3:checked~#pane3{display:block}#t1:checked~.tabs label[for="t1"],#t2:checked~.tabs label[for="t2"],#t3:checked~.tabs label[for="t3"]{background:#7c3aed;border-color:#7c3aed}
 @media(max-width:640px){body{padding:12px}input,textarea,select{max-width:100%!important;box-sizing:border-box}button{margin:6px 4px 6px 0}.grid{grid-template-columns:1fr 1fr}.tab{font-size:13px;padding:10px 4px}}</style></head>
 <body><h2>&#127926; FORGETITLE</h2>
+<!--MSG-->
 <input type="radio" name="ftab" id="t1" class="tabradio" checked><input type="radio" name="ftab" id="t2" class="tabradio"><input type="radio" name="ftab" id="t3" class="tabradio">
 <div class="tabs"><label for="t1" id="tb1" class="tab" onclick="tab(1)">1 · Runs</label><label for="t2" id="tb2" class="tab" onclick="tab(2)">2 · Dataset studio</label><label for="t3" id="tb3" class="tab" onclick="tab(3)">3 · Training</label></div>
 <div id="pane1"><h3>Runs</h3>
-<div id="runs"></div>
-<div class="ckpt">new: <input id="nr_name" placeholder="artist_name" style="width:180px;background:#000;color:#eee;border:1px solid #444;border-radius:6px;padding:8px"> trigger: <input id="nr_trig" placeholder="oneword or empty" style="width:160px;background:#000;color:#eee;border:1px solid #444;border-radius:6px;padding:8px"> <button onclick="mkRun()" style="padding:8px 16px;border-radius:6px;border:0;background:#7c3aed;color:#fff">Create</button> <span id="nr_msg" class="muted"></span></div>
+<div id="runs"></div><!--STATIC_RUNS-->
+<form method="POST" action="/create_run"><div class="ckpt">new: <input name="name" placeholder="artist_name" style="width:180px;background:#000;color:#eee;border:1px solid #444;border-radius:6px;padding:8px"> trigger: <input name="trigger" placeholder="oneword or empty" style="width:160px;background:#000;color:#eee;border:1px solid #444;border-radius:6px;padding:8px"> <button style="padding:8px 16px;border-radius:6px;border:0;background:#7c3aed;color:#fff">Create</button></div></form>
 </div>
 <div id="pane2"><h3>Dataset studio <span class="muted" id="ds_run"></span></h3>
-<div class="ckpt">trigger word — empty means caption-only mode (style bleeds into everything)<br><input id="ds_trig" style="width:200px;background:#000;color:#eee;border:1px solid #444;border-radius:6px;padding:8px"> <button onclick="saveTrig()" style="padding:8px 16px;border-radius:6px;border:0;background:#7c3aed;color:#fff">Save</button> <span id="trig_msg" class="muted"></span><br><span class="muted" id="ds_count"></span></div>
-<div class="ckpt">new song audio — pick many at once (wav/flac/ogg/mp3/m4a/webm, each converts to flac)<br><input type="file" id="up_file" multiple accept="audio/*,.wav,.flac,.ogg,.mp3,.m4a,.webm"> name (single file only) <input id="up_name" placeholder="song_name" style="width:180px;background:#000;color:#eee;border:1px solid #444;border-radius:6px;padding:8px"> <button onclick="upAudio()" style="padding:8px 16px;border-radius:6px;border:0;background:#7c3aed;color:#fff">Upload</button> <span id="up_msg" class="muted"></span></div>
+<form method="POST" action="/set_trigger"><div class="ckpt">trigger word — empty means caption-only mode (style bleeds into everything)<br><input id="ds_trig" name="trigger" style="width:200px;background:#000;color:#eee;border:1px solid #444;border-radius:6px;padding:8px"> <button style="padding:8px 16px;border-radius:6px;border:0;background:#7c3aed;color:#fff">Save</button><br><span class="muted" id="ds_count"></span></div>
+<form method="POST" action="/upload_audio" enctype="multipart/form-data"><div class="ckpt">new song audio — pick many at once (wav/flac/ogg/mp3/m4a/webm, each converts to flac)<br><input type="file" name="audio" multiple accept="audio/*,.wav,.flac,.ogg,.mp3,.m4a,.webm"> name (single file only) <input name="name" placeholder="song_name" style="width:180px;background:#000;color:#eee;border:1px solid #444;border-radius:6px;padding:8px"> <button style="padding:8px 16px;border-radius:6px;border:0;background:#7c3aed;color:#fff">Upload</button></div></form>
 <div id="songs"></div><!--STATIC_SONGS-->
 </div>
 <div id="pane3"><!--STATIC_STATUS-->
@@ -58,17 +59,17 @@ pre{background:#000;padding:10px;border-radius:8px;overflow:auto;max-height:220p
 <div class="card">minted_val eval<div><b id="mval">-</b></div></div>
 <div class="card">ETA<div><b id="eta">-</b></div></div>
 </div>
-<div class="ckpt">training — active run only<br>from <select id="tr_init" style="background:#000;color:#eee;border:1px solid #444;border-radius:6px;padding:8px"><option value="fresh">fresh</option><option value="last">last.pt</option><option value="best">best.pt</option></select> to step <input id="tr_steps" type="number" value="1600" style="width:90px;background:#000;color:#eee;border:1px solid #444;border-radius:6px;padding:8px"> <button onclick="startTrain()" style="padding:8px 16px;border-radius:6px;border:0;background:#22c55e;color:#000">Start training</button> <span id="tr_msg" class="muted"></span><br><span class="muted">needs 10+ ready songs + dataset prepped (finish songs above, then prep via scripts/run_all.sh steps 1-3)</span></div>
+<form method="POST" action="/start_training"><div class="ckpt">training — active run only<br>from <select name="init" style="background:#000;color:#eee;border:1px solid #444;border-radius:6px;padding:8px"><option value="fresh">fresh</option><option value="last">last.pt</option><option value="best">best.pt</option></select> to step <input name="steps" type="number" value="1600" style="width:90px;background:#000;color:#eee;border:1px solid #444;border-radius:6px;padding:8px"> <button style="padding:8px 16px;border-radius:6px;border:0;background:#22c55e;color:#000">Start training</button><br><span class="muted">needs 10+ ready songs + dataset prepped (finish songs above, then prep via scripts/run_all.sh steps 1-3)</span></div>
 <h3>Samples (your custom prompt below)</h3>
 <!--STATIC_SAMPLES-->
 <div id="samples"></div>
 <h3>Next sample prompt</h3>
+<form method="POST" action="/save_cfg">
 <div class="ckpt">
-Style<br><input id="f_style" value="CFGSTYLE" style="width:100%;background:#000;color:#eee;border:1px solid #444;border-radius:6px;padding:8px"><br><br>
-Lyrics<br><textarea id="f_lyr" rows="9" style="width:100%;background:#000;color:#eee;border:1px solid #444;border-radius:6px;padding:8px">CFGLYRICS</textarea><br><br>
-Seed <input id="f_seed" value="CFGSEED" type="number" style="width:100px;background:#000;color:#eee;border:1px solid #444;border-radius:6px;padding:8px">
-<button onclick="saveCfg()" style="padding:8px 16px;border-radius:6px;border:0;background:#7c3aed;color:#fff">Save</button>
-<span id="saved" class="muted"></span></div>
+Style<br><input id="f_style" name="style" value="CFGSTYLE" style="width:100%;background:#000;color:#eee;border:1px solid #444;border-radius:6px;padding:8px"><br><br>
+Lyrics<br><textarea id="f_lyr" name="lyrics" rows="9" style="width:100%;background:#000;color:#eee;border:1px solid #444;border-radius:6px;padding:8px">CFGLYRICS</textarea><br><br>
+Seed <input id="f_seed" name="seed" value="CFGSEED" type="number" style="width:100px;background:#000;color:#eee;border:1px solid #444;border-radius:6px;padding:8px">
+<button style="padding:8px 16px;border-radius:6px;border:0;background:#7c3aed;color:#fff">Save</button></div></form>
 <div id="ckpts"></div>
 <h3>Downloads</h3><!--STATIC_FILES--><div id="dl"></div>
 <h3>Log tail</h3><pre id="log">STATICLOG</pre>
@@ -78,29 +79,13 @@ Seed <input id="f_seed" value="CFGSEED" type="number" style="width:100px;backgro
 let dirty=false;for(const id of ['f_style','f_lyr','f_seed']){document.getElementById(id).addEventListener('input',()=>dirty=true);}
 let trigDirty=false,songsDirty=false;
 document.getElementById('ds_trig').addEventListener('input',()=>trigDirty=true);
-async function saveTrig(){const r=await fetch('/set_trigger',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({trigger:document.getElementById('ds_trig').value})});const d=await r.json();document.getElementById('trig_msg').textContent=d.ok?('saved: '+(d.trigger||'(caption-only mode)')):('error: '+d.error);trigDirty=false;tick();}
-async function saveSong(n){const st=document.getElementById('st_'+n).value,ly=document.getElementById('ly_'+n).value,tg=document.getElementById('tg_'+n).value;
-const r=await fetch('/save_song',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({name:n,style:st,lyrics:ly,trigger:tg})});const d=await r.json();
-document.getElementById('msg_'+n).textContent=d.ok?('saved'+(d.issues&&d.issues.length?' — still: '+d.issues.join('; '):' — ready ✔')):('error: '+d.error);songsDirty=false;tick();}
-async function delSong(n){if(!confirm('delete '+n+'?'))return;await fetch('/delete_song',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({name:n})});songsDirty=false;tick();}
-async function mkRun(){const m=document.getElementById('nr_msg');
-const r=await fetch('/create_run',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({name:document.getElementById('nr_name').value,trigger:document.getElementById('nr_trig').value})});const d=await r.json();
-m.textContent=d.ok?('created + active: '+d.run):('error: '+d.error);tick();}
-async function switchRun(n){await fetch('/switch_run',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({name:n})});tick();}
-async function startTrain(){const m=document.getElementById('tr_msg');m.textContent='launching...';
-const r=await fetch('/start_training',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({init:document.getElementById('tr_init').value,steps:parseInt(document.getElementById('tr_steps').value||'1600')})});const d=await r.json();
-m.textContent=d.ok?('training '+d.run+' '+d.from_step+'→'+d.to_step):('error: '+d.error);tick();}
-async function upAudio(){const fs=document.getElementById('up_file').files;const m=document.getElementById('up_msg');
-if(!fs.length){m.textContent='pick files first';return;}
-const only=document.getElementById('up_name').value;let ok=0;
-for(let i=0;i<fs.length;i++){const f=fs[i];
-const n=(fs.length===1&&only)?only:f.name.replace(/\.[^.]+$/,'');
-m.textContent='uploading '+(i+1)+'/'+fs.length+': '+f.name+'...';
-const fd=new FormData();fd.append('audio',f,f.name);
-try{const r=await fetch('/upload_audio?name='+encodeURIComponent(n),{method:'POST',body:fd});const d=await r.json();
-if(d.ok)ok++;else{m.textContent='error on '+f.name+': '+d.error;break;}}catch(e){m.textContent='upload failed: '+e.message;break;}}
-m.textContent+=' — done '+ok+'/'+fs.length+' — now add captions + lyrics below';
-document.getElementById('up_file').value='';document.getElementById('up_name').value='';tick();}
+
+
+
+
+
+
+
 const players={};
 async function togglePlay(step,file,btn){
 let p=players[step];
@@ -121,9 +106,7 @@ players[step]={audio:a};btn.textContent='\u23F8';a.play();
 }catch(e){btn.textContent='\u25B6';document.getElementById('t'+step).textContent='load failed, retry';}}
 function tab(n){for(let i=1;i<=3;i++){document.getElementById('pane'+i).style.display=i===n?'block':'none';document.getElementById('tb'+i).className='tab'+(i===n?' on':'');}}
 let lastSig='';
-async function saveCfg(){const b={style:document.getElementById('f_style').value,lyrics:document.getElementById('f_lyr').value,seed:parseInt(document.getElementById('f_seed').value||'12')};
-const r=await fetch('/save_cfg',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify(b)});const d=await r.json();
-document.getElementById('saved').textContent=d.ok?'saved - applies from next sample':'error: '+(d.error||'unknown');dirty=false;}
+
 async function tick(){try{const r=await fetch('/api',{cache:'no-store'});if(!r.ok)throw new Error('http '+r.status);const d=await r.json();
 document.getElementById('fill').style.width=d.pct+'%';
 document.getElementById('pct').textContent=d.pct+'% - '+d.note;
@@ -460,7 +443,12 @@ class H(http.server.BaseHTTPRequestHandler):
             self._send(os.path.join(GEN, fn),
                          "audio/mpeg" if fn.endswith(".mp3") else "audio/flac")
         else:
-            import time as _t, html as _h
+            import time as _t, html as _h, urllib.parse as _uq
+            q = self.path.split("?", 1)[1] if "?" in self.path else ""
+            qq = _uq.parse_qs(q)
+            tab = qq.get("tab", ["1"])[0]
+            tab = tab if tab in ("1", "2", "3") else "1"
+            msg = qq.get("msg", [""])[0][:200]
             d = snapshot()
             st = f"<div class='muted'>SERVER { _t.strftime('%H:%M:%S') } · run {active_run()}: step {d['step']}/{TOTAL} ({d['pct']}%) | {d['phase']} | loss {d['loss']} | artist {d['artist_eval']} | minted {d['minted_eval']}</div>"
             ss = ""
@@ -479,8 +467,22 @@ class H(http.server.BaseHTTPRequestHandler):
                 auf = x["audio"]["file"] if x["audio"] else ""
                 player = f"<audio controls preload='none' style='width:100%' src='/a/{d['studio']['run']}/{auf}'></audio><br>" if auf else ""
                 flag = "ready ✔" if not x["issues"] else " — ".join(x["issues"])
-                sg += f"<div class='ckpt'><b>{x['name']}</b> <span class='muted'>{x['lines']} lines, {x['audio']['mb'] if x['audio'] else 0} MB</span><br>{player}<span class='muted'>{flag}</span></div>"
-            b = HTML.replace("<!--STATIC_STATUS-->", st).replace("<!--STATIC_SAMPLES-->", ss or "<div class='muted'>no samples yet</div>").replace("<!--STATIC_FILES-->", ff).replace("FILLPCT", str(d["pct"])).replace("<!--STATIC_SONGS-->", sg or "<div class='muted'>no songs yet</div>")
+                sg += f"<div class='ckpt'><b>{x['name']}</b> <span class='muted'>{x['lines']} lines, {x['audio']['mb'] if x['audio'] else 0} MB</span><br>{player}<span class='muted'>{flag}</span>"
+                sg += f"<form method='POST' action='/save_song'><input type='hidden' name='name' value='{x['name']}'>"
+                sg += f"trigger (empty = run default)<br><input name='trigger' value='{_h.escape(x['trig'], quote=True)}' style='width:220px;background:#000;color:#eee;border:1px solid #444;border-radius:6px;padding:8px'><br>"
+                sg += f"style / caption<br><input name='style' value='{_h.escape(x['style'], quote=True)}' style='width:100%;background:#000;color:#eee;border:1px solid #444;border-radius:6px;padding:8px'><br>"
+                sg += f"lyrics<br><textarea name='lyrics' rows='6' style='width:100%;background:#000;color:#eee;border:1px solid #444;border-radius:6px;padding:8px'>{_h.escape(x['lyrics'], quote=False)}</textarea><br>"
+                sg += f"<button>Save song</button></form>"
+                sg += f"<form method='POST' action='/delete_song' onsubmit=\"return confirm('delete {x['name']}?')\"><input type='hidden' name='name' value='{x['name']}'><button>Delete</button></form></div>"
+            rs = ""
+            for x in d["runs"]["runs"]:
+                act = x["name"] == d["runs"]["active"]
+                sw = "" if act else f"<form method='POST' action='/switch_run' style='display:inline'><input type='hidden' name='name' value='{x['name']}'><button>Switch</button></form>"
+                rs += f"<div class='ckpt'><b>{x['name']}</b>{' (active)' if act else ''} <span class='muted'>{x['ready']}/{x['total']} songs" + (f" | ckpts {','.join(map(str, x['ckpts']))}" if x["ckpts"] else "") + "</span> " + sw + "</div>"
+            b = HTML.replace("<!--STATIC_STATUS-->", st).replace("<!--STATIC_SAMPLES-->", ss or "<div class='muted'>no samples yet</div>").replace("<!--STATIC_FILES-->", ff).replace("FILLPCT", str(d["pct"])).replace("<!--STATIC_SONGS-->", sg or "<div class='muted'>no songs yet</div>").replace("<!--STATIC_RUNS-->", rs or "<div class='muted'>no runs yet</div>")
+            b = b.replace('class="tabradio" checked', 'class="tabradio"')
+            b = b.replace(f'id="t{tab}" class="tabradio"', f'id="t{tab}" class="tabradio" checked')
+            b = b.replace("<!--MSG-->", f"<div class='ckpt' style='border-color:#7c3aed'>{_h.escape(msg)}</div>" if msg else "")
             b = b.replace('<b id="step">-</b>', f"<b id=\"step\">{d['step_est']}</b>").replace('<b id="phase">-</b>', f"<b id=\"phase\">{d['phase']}</b>").replace('<b id="loss">-</b>', f"<b id=\"loss\">{d['loss']}</b>").replace('<b id="eval">-</b>', f"<b id=\"eval\">{d['artist_eval']}</b>").replace('<b id="mval">-</b>', f"<b id=\"mval\">{d['minted_eval']}</b>")
             b = b.replace('<b id="eta">-</b>', f"<b id=\"eta\">{d['eta']}</b>")
             b = b.replace("FORGETITLE", _h.escape(os.environ.get("FORGE_TITLE", "yue2-forge training")))
@@ -520,13 +522,44 @@ class H(http.server.BaseHTTPRequestHandler):
         if n <= 0 or n > limit:
             return None
         return self.rfile.read(n)
-    def _post_save_cfg(self):
-        raw = self._body(20000)
+    def _fields(self):
+        """JSON or urlencoded form -> dict. Multipart handled separately."""
+        ctype = self.headers.get("Content-Type", "")
+        raw = self._body(60000)
         if raw is None:
-            self._json({"ok": False, "error": "bad size"})
-            return
+            return None
+        if "application/json" in ctype:
+            try:
+                return json.loads(raw)
+            except Exception:
+                return None
+        import urllib.parse as _up
+        return {k: v[0] for k, v in _up.parse_qs(raw.decode("utf-8", "replace")).items()}
+    def _done(self, tab="1", msg=""):
+        import urllib.parse as _up
+        loc = "/?tab=" + tab + ("&msg=" + _up.quote(msg[:200]) if msg else "")
+        self.send_response(303)
+        self.send_header("Location", loc)
+        self.end_headers()
+    def _is_json(self):
+        return "application/json" in self.headers.get("Content-Type", "")
+    def _ok(self, obj, tab="1"):
+        if self._is_json():
+            self._json(obj)
+        else:
+            self._done(tab, obj.get("msg", "saved ✔") if isinstance(obj, dict) else "saved ✔")
+        return None
+    def _fail(self, err, tab="1"):
+        if self._is_json():
+            self._json({"ok": False, "error": str(err)[:150]})
+        else:
+            self._done(tab, "error: " + str(err)[:150])
+        return None
+    def _post_save_cfg(self):
+        c = self._fields()
+        if c is None:
+            return self._fail("bad request", "3")
         try:
-            c = json.loads(raw)
             style = str(c.get("style", "")).strip()[:1500]
             lyrics = str(c.get("lyrics", "")).strip()[:8000]
             seed = int(c.get("seed", 12))
@@ -535,19 +568,16 @@ class H(http.server.BaseHTTPRequestHandler):
             if not re.search(r"[a-z\[]", lyrics, re.I):
                 raise ValueError("lyrics look empty")
         except Exception as e:
-            self._json({"ok": False, "error": str(e)[:120]})
-            return
+            return self._fail(e, "3")
         open(STYLE_FILE, "w").write(style + "\n")
         open(LYR_FILE, "w").write(lyrics + "\n")
         json.dump({"seed": seed}, open(CFG, "w"))
-        self._json({"ok": True})
+        return self._ok({"ok": True, "msg": "sample prompt saved"}, "3")
     def _post_save_song(self):
-        raw = self._body(60000)
-        if raw is None:
-            self._json({"ok": False, "error": "bad size"})
-            return
+        c = self._fields()
+        if c is None:
+            return self._fail("bad request", "2")
         try:
-            c = json.loads(raw)
             name = clean_name(c.get("name", ""))
             style = str(c.get("style", "")).strip()[:1500]
             lyrics = str(c.get("lyrics", "")).strip()[:12000]
@@ -557,8 +587,7 @@ class H(http.server.BaseHTTPRequestHandler):
             if not style or not lyrics:
                 raise ValueError("style and lyrics required")
         except Exception as e:
-            self._json({"ok": False, "error": str(e)[:120]})
-            return
+            return self._fail(e, "2")
         _, ad, ald = run_paths()
         os.makedirs(ad, exist_ok=True)
         os.makedirs(ald, exist_ok=True)
@@ -573,34 +602,31 @@ class H(http.server.BaseHTTPRequestHandler):
                 del meta[name]["trigger"]
             _save_songs_meta(active_run(), meta)
         v = validate_song(name, ad, strig if strig is not None else run_trigger())
-        self._json({"ok": True, "issues": v["issues"]})
+        issues = v["issues"]
+        return self._ok({"ok": True, "issues": issues, "msg": "saved" + (" — still: " + "; ".join(issues) if issues else " — ready ✔")}, "2")
     def _post_delete_song(self):
-        raw = self._body(2000)
-        if raw is None:
-            self._json({"ok": False, "error": "bad size"})
-            return
+        c = self._fields()
+        if c is None:
+            return self._fail("bad request", "2")
         try:
-            name = clean_name(json.loads(raw).get("name", ""))
+            name = clean_name(c.get("name", ""))
             if not name:
                 raise ValueError("song name required")
         except Exception as e:
-            self._json({"ok": False, "error": str(e)[:120]})
-            return
+            return self._fail(e, "2")
         _, ad, ald = run_paths()
         for d in (ad, ald):
             for f in glob.glob(os.path.join(d, name + ".*")):
                 os.remove(f)
-        self._json({"ok": True})
+        return self._ok({"ok": True, "msg": "deleted " + name}, "2")
     def _post_set_trigger(self):
-        raw = self._body(2000)
-        if raw is None:
-            self._json({"ok": False, "error": "bad size"})
-            return
+        c = self._fields()
+        if c is None:
+            return self._fail("bad request", "2")
         try:
-            trig = re.sub(r"[^a-z0-9]+", "", str(json.loads(raw).get("trigger", "")).strip().lower())[:32]
+            trig = re.sub(r"[^a-z0-9]+", "", str(c.get("trigger", "")).strip().lower())[:32]
         except Exception as e:
-            self._json({"ok": False, "error": str(e)[:120]})
-            return
+            return self._fail(e, "2")
         base, _, _ = run_paths()
         os.makedirs(base, exist_ok=True)
         cfgp = os.path.join(base, "config.json")
@@ -611,41 +637,46 @@ class H(http.server.BaseHTTPRequestHandler):
             pass
         cfg["trigger"] = trig
         json.dump(cfg, open(cfgp, "w"))
-        self._json({"ok": True, "trigger": trig})
+        return self._ok({"ok": True, "trigger": trig, "msg": "trigger saved"}, "2")
     def _post_upload_audio(self):
         ctype = self.headers.get("Content-Type", "")
         m = re.match(r"multipart/form-data; boundary=(.+)$", ctype)
         if not m:
-            self._json({"ok": False, "error": "need multipart upload"})
-            return
+            return self._fail("need multipart upload", "2")
         raw = self._body(400 * 1024 * 1024)
         if raw is None:
-            self._json({"ok": False, "error": "file too big (400MB max)"})
-            return
+            return self._fail("file too big (400MB max)", "2")
         try:
             qs = self.path.split("?", 1)[1] if "?" in self.path else ""
-            name = clean_name(re.findall(r"(?:^|&)name=([^&]*)", qs)[0] if re.findall(r"(?:^|&)name=([^&]*)", qs) else "")
-            if not name:
-                raise ValueError("song name required (?name=...)")
+            qn = re.findall(r"(?:^|&)name=([^&]*)", qs)
+            import urllib.parse as _up
+            fields = {}
             bound = ("--" + m.group(1).strip().strip('"')).encode()
             parts = raw.split(bound)
             blob, fname = None, "upload.bin"
             for p in parts:
-                if b'name="audio"' in p.split(b"\r\n\r\n", 1)[0]:
-                    head, blob = p.split(b"\r\n\r\n", 1)
-                    blob = blob.rsplit(b"\r\n", 1)[0]
-                    fm = re.search(rb'filename="([^"]+)"', head)
-                    if fm:
-                        fname = fm.group(1).decode("utf-8", "replace")
-                    break
+                if b"\r\n\r\n" not in p:
+                    continue
+                head, body = p.split(b"\r\n\r\n", 1)
+                nm = re.search(rb'name="([^"]+)"', head)
+                if not nm:
+                    continue
+                fnm = re.search(rb'filename="([^"]+)"', head)
+                if fnm and nm.group(1) == b"audio":
+                    blob = body.rsplit(b"\r\n", 1)[0]
+                    fname = fnm.group(1).decode("utf-8", "replace")
+                elif not fnm:
+                    fields[nm.group(1).decode()] = body.rsplit(b"\r\n", 1)[0].decode("utf-8", "replace")
+            name = clean_name(_up.unquote(qn[0]) if qn else fields.get("name", ""))
+            if not name:
+                raise ValueError("song name required")
             if not blob:
                 raise ValueError("no audio file field")
             ext = os.path.splitext(fname)[1].lower()
             if ext not in AUDIO_EXTS:
                 raise ValueError(f"audio type {ext or '?'} not accepted (wav/flac/ogg/mp3/m4a/webm)")
         except Exception as e:
-            self._json({"ok": False, "error": str(e)[:120]})
-            return
+            return self._fail(e, "2")
         _, ad, _ = run_paths()
         os.makedirs(ad, exist_ok=True)
         tmp = os.path.join(ad, name + ".incoming" + ext)
@@ -659,17 +690,15 @@ class H(http.server.BaseHTTPRequestHandler):
                 os.remove(tmp)
             except Exception:
                 pass
-            self._json({"ok": False, "error": f"audio convert failed: {str(e)[:100]}"})
-            return
+            return self._fail(f"audio convert failed: {str(e)[:100]}", "2")
         try:
             os.remove(tmp)
         except Exception:
             pass
         if r.returncode != 0 or not os.path.exists(out):
             err = (r.stderr or b"").decode("utf-8", "replace")[-200:]
-            self._json({"ok": False, "error": f"ffmpeg rejected it ({err or 'unknown'})"})
-            return
-        self._json({"ok": True, "mb": round(os.path.getsize(out) / 2**20, 1)})
+            return self._fail(f"ffmpeg rejected it ({err or 'unknown'})", "2")
+        return self._ok({"ok": True, "mb": round(os.path.getsize(out) / 2**20, 1), "msg": f"uploaded {name}.flac"}, "2")
     def _repoint(self, link, target):
         os.makedirs(os.path.dirname(link), exist_ok=True)
         os.makedirs(target, exist_ok=True)
@@ -683,12 +712,10 @@ class H(http.server.BaseHTTPRequestHandler):
             raise ValueError(f"blocked at {link}")
         os.symlink(target, link)
     def _post_create_run(self):
-        raw = self._body(4000)
-        if raw is None:
-            self._json({"ok": False, "error": "bad size"})
-            return
+        c = self._fields()
+        if c is None:
+            return self._fail("bad request", "1")
         try:
-            c = json.loads(raw)
             name = clean_name(c.get("name", ""))
             trig = re.sub(r"[^a-z0-9]+", "", str(c.get("trigger", "")).strip().lower())[:32]
             if not name:
@@ -697,8 +724,7 @@ class H(http.server.BaseHTTPRequestHandler):
             if os.path.exists(base):
                 raise ValueError("run already exists — switch to it instead")
         except Exception as e:
-            self._json({"ok": False, "error": str(e)[:120]})
-            return
+            return self._fail(e, "1")
         os.makedirs(os.path.join(base, "artist"), exist_ok=True)
         os.makedirs(os.path.join(base, "artist_lyrics"), exist_ok=True)
         import time as _t
@@ -711,36 +737,31 @@ class H(http.server.BaseHTTPRequestHandler):
             self._repoint("/workspace/real/artist", os.path.join(base, "artist"))
             self._repoint("/workspace/real/artist_lyrics", os.path.join(base, "artist_lyrics"))
         except Exception as e:
-            self._json({"ok": False, "error": str(e)[:150]})
-            return
-        self._json({"ok": True, "run": name})
+            return self._fail(str(e)[:150], "1")
+        return self._ok({"ok": True, "run": name, "msg": "run " + name + " active"}, "1")
     def _post_switch_run(self):
-        raw = self._body(2000)
-        if raw is None:
-            self._json({"ok": False, "error": "bad size"})
-            return
+        c = self._fields()
+        if c is None:
+            return self._fail("bad request", "1")
         try:
-            name = clean_name(json.loads(raw).get("name", ""))
+            name = clean_name(c.get("name", ""))
             base = os.path.join(RUNS, name)
             if not name or not os.path.isdir(base):
                 raise ValueError("unknown run")
         except Exception as e:
-            self._json({"ok": False, "error": str(e)[:120]})
-            return
+            return self._fail(e, "1")
         try:
             self._repoint("/workspace/real/artist", os.path.join(base, "artist"))
             self._repoint("/workspace/real/artist_lyrics", os.path.join(base, "artist_lyrics"))
         except Exception as e:
-            self._json({"ok": False, "error": str(e)[:150]})
-            return
+            return self._fail(str(e)[:150], "1")
         reg = _registry()
         reg["active"] = name
         _save_registry(reg)
-        self._json({"ok": True, "run": name})
+        return self._ok({"ok": True, "run": name, "msg": "switched to " + name}, "1")
     def _post_start_training(self):
         if subprocess.run(["pgrep", "-f", "ar_train|ar_lora_"], capture_output=True).returncode == 0:
-            self._json({"ok": False, "error": "training already running"})
-            return
+            return self._fail("training already running", "3")
         base, ad, _ = run_paths()
         trig = run_trigger()
         ready = 0
@@ -752,14 +773,11 @@ class H(http.server.BaseHTTPRequestHandler):
             if not validate_song(b, ad, meta.get(b, {}).get("trigger", "") or trig)["issues"]:
                 ready += 1
         if ready < MIN_SONGS:
-            self._json({"ok": False, "error": f"need {MIN_SONGS}+ ready songs (have {ready}) — small sets memorize instead of learning style"})
-            return
-        raw = self._body(4000)
-        if raw is None:
-            self._json({"ok": False, "error": "bad size"})
-            return
+            return self._fail(f"need {MIN_SONGS}+ ready songs (have {ready}) — small sets memorize instead of learning style", "3")
+        c = self._fields()
+        if c is None:
+            return self._fail("bad request", "3")
         try:
-            c = json.loads(raw) if raw else {}
             total = max(200, min(5000, int(c.get("steps", 1600))))
             init = str(c.get("init", "fresh"))
             name = active_run()
@@ -779,13 +797,11 @@ class H(http.server.BaseHTTPRequestHandler):
             if total <= start:
                 raise ValueError(f"steps must exceed {start} when resuming")
         except Exception as e:
-            self._json({"ok": False, "error": str(e)[:150]})
-            return
+            return self._fail(e, "3")
         repo = os.environ.get("FORGE_REPO", "/workspace/yue2-forge")
         train_py = os.path.join(repo, "scripts", "ar_train.py")
         if not os.path.exists(train_py):
-            self._json({"ok": False, "error": "trainer script missing on server"})
-            return
+            return self._fail("trainer script missing on server", "3")
         env = dict(os.environ, HF_HOME="/workspace/hf", SCHED_STEPS="3000",
                    CK_FROM="600", CK_EVERY="200", START_STEP=str(start))
         log = open("/workspace/ar_train.log", "a")
@@ -793,7 +809,7 @@ class H(http.server.BaseHTTPRequestHandler):
                           str(total - start), "64", "0.5", initpt, "1e-4", "0.08"],
                          stdout=log, stderr=subprocess.STDOUT, stdin=subprocess.DEVNULL,
                          start_new_session=True, env=env)
-        self._json({"ok": True, "run": name, "from_step": start, "to_step": total})
+        return self._ok({"ok": True, "run": name, "msg": f"training {name} {start}→{total}"}, "3")
     def _json(self, obj):
         b = json.dumps(obj).encode()
         self.send_response(200)
