@@ -7,10 +7,11 @@ NAR=${NAR_CK:-/workspace/tok/nar_lora_joint_v4.pt}
 STYLE=${SAMPLE_STYLE_TRACK:-sample}
 LYR=${SAMPLE_LYRICS:-/workspace/sample_lyrics.txt}
 export HF_HOME=/workspace/hf SCHED_STEPS=3000 CK_FROM=600 CK_EVERY=200 TOTAL_STEPS=${TOTAL_STEPS:-1600}
-cd /workspace/scripts
+SCRIPT_DIR="$(cd "$(dirname "$0")" && pwd)"
+cd "$SCRIPT_DIR"
 
 train_pid() { pgrep -f "ar_lora_" | head -1; }
-have_sample() { ls $GEN/tonydize_s$1.mp3 $GEN/tonydize_s$1.flac >/dev/null 2>&1; }
+have_sample() { ls $GEN/${RUN_NAME:-my_lora}_s$1.mp3 $GEN/${RUN_NAME:-my_lora}_s$1.flac >/dev/null 2>&1; }
 
 sample_step() {
   local t=$1
@@ -35,7 +36,7 @@ sample_step() {
     echo "[watcher] gpu ready, free VRAM: $(nvidia-smi --query-gpu=memory.free --format=csv,noheader,nounits | head -1) MiB" >> /workspace/watcher.log
   else
     for i in $(seq 1 120); do
-      grep -q "RESULT tonydize" /workspace/ar_train.log 2>/dev/null && break
+      grep -q "RESULT ${RUN_NAME:-my_lora}" /workspace/ar_train.log 2>/dev/null && break
       [ -z "$(train_pid)" ] && sleep 10 && break
       sleep 10
     done
@@ -45,12 +46,14 @@ sample_step() {
     SEED=$(python3 -c "import json; print(int(json.load(open('/workspace/sample_cfg.json')).get('seed',12)))" 2>/dev/null || echo 12)
   fi
   echo "[watcher] sampling with seed $SEED" >> /workspace/watcher.log
-  /workspace/yue2venv/bin/python -u ar_generate.py \
+  /workspace/yue2venv/bin/python -u "$SCRIPT_DIR/ar_generate.py" \
     $OUT/step-$t.pt $NAR ${RUN_NAME:-my_lora}_s$t $STYLE $LYR "$SEED" >> /workspace/gen.log 2>&1
   if [ -f $GEN/${RUN_NAME:-my_lora}_s$t.flac ]; then
     ffmpeg -y -v error -i $GEN/${RUN_NAME:-my_lora}_s$t.flac -codec:a libmp3lame -qscale:a 4 \
       $GEN/${RUN_NAME:-my_lora}_s$t.mp3 2>>/workspace/gen.log || true
   fi
+  # automatic: every sampled checkpoint also lands as .safetensors (user-facing format)
+  /workspace/yue2venv/bin/python "$SCRIPT_DIR/export_safetensors.py" $OUT/step-$t.pt >> /workspace/gen.log 2>&1 || true
   echo "[watcher] sample step-$t done" >> /workspace/watcher.log
 }
 
@@ -63,7 +66,8 @@ while true; do
   done
   if [ -n "$latest" ]; then
     sample_step "$latest"
-    if [ "$latest" -eq 1600 ]; then
+    if [ "$latest" -eq "$TOTAL_STEPS" ]; then
+      /workspace/yue2venv/bin/python "$SCRIPT_DIR/export_safetensors.py" --all $OUT >> /workspace/gen.log 2>&1 || true
       echo "{\"phase\": \"done\"}" > /workspace/ui/state.json
       echo "[watcher] ALL DONE" >> /workspace/watcher.log
       break
