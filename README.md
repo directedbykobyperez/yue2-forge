@@ -24,6 +24,19 @@ your songs/  ──▶  convert + tag  ──▶  MERT features + VAE latents  �
 The 50/50 minted-regularizer mix keeps YuE2's token grammar intact while
 your 20–30 songs teach it the artist (voice learns first, groove follows).
 
+## Requirements (v1)
+
+- **OS:** Ubuntu/Debian Linux (uses `apt` for ffmpeg + git-lfs). Other distros: install those two yourself, rest works.
+- **GPU:** NVIDIA, 22GB+ VRAM (L4/3090/4090/A10 tested pattern; A100/H100 faster, same code).
+- **Python:** 3.12 with `venv` (`apt install python3.12-venv` if missing).
+- **Layout:** a writable `/workspace` dir (run as root or sudo — standard on GPU pods).
+- **Net:** Hugging Face reachable (base models + weights download once, ~15GB).
+
+> **It won't break your system:** everything Python lives in an isolated
+> venv at `/workspace/yue2venv` — your system python is never touched.
+> System-wide changes are only `ffmpeg` + `git-lfs` via apt. Models and
+> data live under `/workspace`, code stays in the cloned repo.
+
 ## Quickstart (fresh GPU server, 22GB+ VRAM)
 
 ```bash
