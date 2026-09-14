@@ -50,7 +50,17 @@ Example:
 ...
 ```
 
-## 4. Quality notes
+## 4. How much is enough
+
+- **Sweet spot: 20–30 songs** (~60–90 minutes total). This is proven territory.
+- **Workable minimum: ~10 songs.** Below that the model memorizes instead
+  of learning style — you get the same 3 songs regurgitated, not new music
+  in the style. If you must run small, cut training short (~800 steps).
+- What matters is **total minutes + variety** (different songs/tempos, one
+  voice), not just file count. One artist per run — mixed artists mix up
+  the voice.
+
+## 5. Quality notes
 
 - Studio recordings beat live rips. Drowned/out-of-tune vocals teach
   drowned/out-of-tune output.
