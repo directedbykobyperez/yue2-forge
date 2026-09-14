@@ -284,6 +284,26 @@ def _save_songs_meta(name, meta):
     json.dump(meta, open(os.path.join(base, "songs.json"), "w"))
 def song_trigger(run, song):
     return _songs_meta(run).get(song, {}).get("trigger", "") or run_trigger(run)
+def trig_prefix(trig):
+    return f"{trig}, in the style of {trig}. " if trig else ""
+def split_style(raw, trig):
+    """disk full caption -> box display caption (any trigger prefix hidden)."""
+    raw = (raw or "").strip()
+    if trig:
+        m = re.match(r"(?i)" + re.escape(trig) + r"\s*,\s*in the style of\s+" + re.escape(trig) + r"\.\s*", raw)
+        if m:
+            return raw[m.end():].strip()
+    m = re.match(r"(?i)[a-z0-9]+\s*,\s*in the style of\s+[a-z0-9]+\.\s*", raw)
+    if m:
+        return raw[m.end():].strip()
+    return raw
+def full_style(display, trig):
+    """box caption -> disk caption (trigger ensured first, never doubled)."""
+    display = (display or "").strip()
+    if trig:
+        display = split_style(display, trig)
+        return trig_prefix(trig) + display
+    return display
 def clean_name(n):
     return re.sub(r"[^a-z0-9_]+", "_", (n or "").strip().lower()).strip("_")[:48]
 def validate_song(base, ad, trig):
@@ -293,7 +313,7 @@ def validate_song(base, ad, trig):
         if fn == base + ".lyrics.txt":
             info["lyrics"] = open(f, errors="replace").read().strip()
         elif fn == base + ".txt":
-            info["style"] = open(f, errors="replace").read().strip()
+            info["_raw_style"] = open(f, errors="replace").read().strip()
         elif os.path.splitext(fn)[1].lower() in AUDIO_EXTS:
             info["audio"] = {"file": fn, "mb": round(os.path.getsize(f) / 2**20, 1)}
     lines = [l for l in info["lyrics"].splitlines() if l.strip()]
@@ -302,10 +322,9 @@ def validate_song(base, ad, trig):
     info["notes"] = []
     if not info["audio"]:
         info["issues"].append("no audio — upload it below")
+    info["style"] = split_style(info.pop("_raw_style", ""), trig)
     if not info["style"]:
         info["issues"].append("no style caption")
-    elif trig and trig.lower() not in info["style"].lower():
-        info["issues"].append(f"trigger '{trig}' missing from style")
     if len(lines) < 8:
         info["issues"].append(f"lyrics short ({len(lines)} lines, want 15+)")
     if not info["tags"]:
@@ -614,7 +633,7 @@ class H(http.server.BaseHTTPRequestHandler):
         _, ad, ald = run_paths()
         os.makedirs(ad, exist_ok=True)
         os.makedirs(ald, exist_ok=True)
-        open(os.path.join(ad, name + ".txt"), "w").write(style + "\n")
+        open(os.path.join(ad, name + ".txt"), "w").write(full_style(style, run_trigger()) + "\n")
         open(os.path.join(ad, name + ".lyrics.txt"), "w").write(lyrics + "\n")
         open(os.path.join(ald, name + ".lyrics.txt"), "w").write(lyrics + "\n")
         if strig is not None:
@@ -663,7 +682,20 @@ class H(http.server.BaseHTTPRequestHandler):
             pass
         cfg["trigger"] = trig
         json.dump(cfg, open(cfgp, "w"))
-        return self._ok({"ok": True, "trigger": trig, "msg": "trigger saved"}, "1")
+        n = 0
+        if trig:
+            for f in glob.glob(os.path.join(base, "artist", "*.txt")):
+                if f.endswith(".lyrics.txt"):
+                    continue
+                try:
+                    cur = open(f, errors="replace").read().strip()
+                except Exception:
+                    continue
+                want = full_style(cur, trig)
+                if want != cur:
+                    open(f, "w").write(want + "\n")
+                    n += 1
+        return self._ok({"ok": True, "trigger": trig, "msg": f"trigger saved ({n} captions updated)"}, "1")
     def _post_upload_audio(self):
         ctype = self.headers.get("Content-Type", "")
         m = re.match(r"multipart/form-data; boundary=(.+)$", ctype)
