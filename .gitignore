@@ -1,0 +1,40 @@
+# Python
+__pycache__/
+*.py[cod]
+*.egg-info/
+.yue2venv/
+yue2venv/
+
+# Checkpoints & weights (too big for git — keep local or release as attachments)
+*.pt
+*.pth
+*.ckpt
+*.safetensors
+*.bin
+
+# Datasets & audio (local only)
+*.flac
+*.ogg
+*.wav
+*.mp3
+datasets/
+artist/
+stems/
+prep/
+
+# Model caches (re-downloaded by install.sh)
+hf/
+.cache/
+
+# Logs
+*.log
+
+# Secrets — NEVER commit
+.ghtoken*
+*token*.txt
+.env
+
+# OS / editor
+.DS_Store
+.vscode/
+.idea/
