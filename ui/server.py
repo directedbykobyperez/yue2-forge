@@ -120,7 +120,7 @@ document.getElementById('log').textContent=d.log_tail;
 const sig=JSON.stringify([d.samples,d.checkpoints,d.files,d.studio,d.runs]);
 if(sig!==lastSig){lastSig=sig;
 let r='';for(const x of d.runs.runs){const act=x.name===d.runs.active;
-r+='<div class="ckpt">'+(act?'<b>'+x.name+' (active)</b>': '<b>'+x.name+'</b> <form method="POST" action="/switch_run" style="display:inline"><input type="hidden" name="name" value="'+x.name+'"><button>Switch</button></form>')+' <span class="muted">'+x.ready+'/'+x.total+' songs'+(x.ckpts.length?' | ckpts '+x.ckpts.join(','):'')+(x.best?' | best ✔':'')+'</span> <a href="/confirm_delete?run='+x.name+'" style="color:#f87171;text-decoration:none;font-size:18px" title="delete run">✕</a><br><form method="POST" action="/set_trigger">trigger: <input name="trigger" value="'+x.trigger+'" placeholder="empty = caption-only" style="width:160px;background:#000;color:#eee;border:1px solid #444;border-radius:6px;padding:8px"><input type="hidden" name="run" value="'+x.name+'"><button>Save</button></form></div>';}
+r+='<div class="ckpt">'+(act?'<b>'+x.name+' (active)</b>': '<b>'+x.name+'</b> <form method="POST" action="/switch_run" style="display:inline"><input type="hidden" name="name" value="'+x.name+'"><button>Switch</button></form>')+' <span class="muted">'+x.ready+'/'+x.total+' songs'+(x.ckpts.length?' | ckpts '+x.ckpts.join(','):'')+(x.best?' | best ✔':'')+'</span> <a href="/confirm_delete?run='+x.name+'" style="color:#f87171;text-decoration:none;font-size:18px" title="delete run">✕</a><br><form method="POST" action="/set_trigger">trigger: <input name="trigger" value="'+x.trigger+'" placeholder="empty = caption-only" style="width:160px;background:#000;color:#eee;border:1px solid #444;border-radius:6px;padding:8px"><input type="hidden" name="run" value="'+x.name+'"> caption: <select name="template"><option value="full"'+(x.template!=='short'?' selected':'')+'>trigger, in the style of…</option><option value="short"'+(x.template==='short'?' selected':'')+'>trigger, caption</option></select> <button>Save</button></form></div>';}
 document.getElementById('runs').innerHTML=r||'<div class="muted">no runs yet — create one below</div>';
 let s='';if(d.samples.length==0){s='no samples yet - first one lands at step 600';}
 for(const x of d.samples){s+='<div class="ckpt"><b>step '+x.step+'</b> <span class="muted">'+x.secs+'s</span><br><button class="play" onclick="togglePlay('+x.step+',\''+x.file+'\',this)">\u25B6</button><input class="seek" type="range" id="seek'+x.step+'" value="0" step="0.1"> <span id="t'+x.step+'" class="muted">0:00</span><div class="bar" style="height:6px"><div class="fill" id="bar'+x.step+'"></div></div><a class="dl" href="/m/'+x.file+'" download="'+x.file+'">\u2B07 Download MP3</a></div>';}
@@ -284,8 +284,16 @@ def _save_songs_meta(name, meta):
     json.dump(meta, open(os.path.join(base, "songs.json"), "w"))
 def song_trigger(run, song):
     return _songs_meta(run).get(song, {}).get("trigger", "") or run_trigger(run)
-def trig_prefix(trig):
-    return f"{trig}, in the style of {trig}. " if trig else ""
+def run_template(name=None):
+    try:
+        t = json.load(open(os.path.join(run_paths(name)[0], "config.json"))).get("template", "full")
+        return t if t in ("full", "short") else "full"
+    except Exception:
+        return "full"
+def trig_prefix(trig, template="full"):
+    if not trig:
+        return ""
+    return f"{trig}, " if template == "short" else f"{trig}, in the style of {trig}. "
 def split_style(raw, trig):
     """disk full caption -> box display caption (any trigger prefix hidden)."""
     raw = (raw or "").strip()
@@ -293,16 +301,19 @@ def split_style(raw, trig):
         m = re.match(r"(?i)" + re.escape(trig) + r"\s*,\s*in the style of\s+" + re.escape(trig) + r"\.\s*", raw)
         if m:
             return raw[m.end():].strip()
+        m = re.match(r"(?i)" + re.escape(trig) + r",\s*", raw)
+        if m:
+            return raw[m.end():].strip()
     m = re.match(r"(?i)[a-z0-9]+\s*,\s*in the style of\s+[a-z0-9]+\.\s*", raw)
     if m:
         return raw[m.end():].strip()
     return raw
-def full_style(display, trig):
+def full_style(display, trig, template="full"):
     """box caption -> disk caption (trigger ensured first, never doubled)."""
     display = (display or "").strip()
     if trig:
         display = split_style(display, trig)
-        return trig_prefix(trig) + display
+        return trig_prefix(trig, template) + display
     return display
 def clean_name(n):
     return re.sub(r"[^a-z0-9_]+", "_", (n or "").strip().lower()).strip("_")[:48]
@@ -379,7 +390,7 @@ def runs_snapshot():
         ckpts = sorted(int(m.group(1)) for f in glob.glob(os.path.join(ckd, "step-*.pt")) for m in [re.search(r"step-(\d+)", f)] if m)
         out.append({"name": n, "created": created, "ready": ready, "total": total,
                     "ckpts": ckpts, "best": os.path.exists(os.path.join(ckd, "best.pt")),
-                    "trigger": run_trigger(n)})
+                    "trigger": run_trigger(n), "template": run_template(n)})
     return {"active": active_run(), "runs": out}
 
 class H(http.server.BaseHTTPRequestHandler):
@@ -518,7 +529,7 @@ class H(http.server.BaseHTTPRequestHandler):
             for x in d["runs"]["runs"]:
                 act = x["name"] == d["runs"]["active"]
                 sw = "" if act else f"<form method='POST' action='/switch_run' style='display:inline'><input type='hidden' name='name' value='{x['name']}'><button>Switch</button></form>"
-                rs += f"<div class='ckpt'><b>{x['name']}</b>{' (active)' if act else ''} <span class='muted'>{x['ready']}/{x['total']} songs" + (f" | ckpts {','.join(map(str, x['ckpts']))}" if x["ckpts"] else "") + "</span> " + sw + f" <a href='/confirm_delete?run={x['name']}' style='color:#f87171;text-decoration:none;font-size:18px' title='delete run'>✕</a><br><form method='POST' action='/set_trigger'>trigger: <input name='trigger' value='{_h.escape(x['trigger'], quote=True)}' placeholder='empty = caption-only' style='width:160px;background:#000;color:#eee;border:1px solid #444;border-radius:6px;padding:8px'><input type='hidden' name='run' value='{x['name']}'><button>Save</button></form></div>"
+                rs += f"<div class='ckpt'><b>{x['name']}</b>{' (active)' if act else ''} <span class='muted'>{x['ready']}/{x['total']} songs" + (f" | ckpts {','.join(map(str, x['ckpts']))}" if x["ckpts"] else "") + "</span> " + sw + f" <a href='/confirm_delete?run={x['name']}' style='color:#f87171;text-decoration:none;font-size:18px' title='delete run'>✕</a><br><form method='POST' action='/set_trigger'>trigger: <input name='trigger' value='{_h.escape(x['trigger'], quote=True)}' placeholder='empty = caption-only' style='width:160px;background:#000;color:#eee;border:1px solid #444;border-radius:6px;padding:8px'><input type='hidden' name='run' value='{x['name']}'> caption: <select name='template'><option value='full'{(' selected' if x['template'] != 'short' else '')}>trigger, in the style of…</option><option value='short'{(' selected' if x['template'] == 'short' else '')}>trigger, caption</option></select> <button>Save</button></form></div>"
             b = HTML.replace("<!--STATIC_STATUS-->", st).replace("<!--STATIC_SAMPLES-->", ss or "<div class='muted'>no samples yet</div>").replace("<!--STATIC_FILES-->", ff).replace("FILLPCT", str(d["pct"])).replace("<!--STATIC_SONGS-->", sg or "<div class='muted'>no songs yet</div>").replace("<!--STATIC_RUNS-->", rs or "<div class='muted'>no runs yet</div>")
             b = b.replace('class="tabradio" checked', 'class="tabradio"')
             b = b.replace(f'id="t{tab}" class="tabradio"', f'id="t{tab}" class="tabradio" checked')
@@ -633,7 +644,7 @@ class H(http.server.BaseHTTPRequestHandler):
         _, ad, ald = run_paths()
         os.makedirs(ad, exist_ok=True)
         os.makedirs(ald, exist_ok=True)
-        open(os.path.join(ad, name + ".txt"), "w").write(full_style(style, run_trigger()) + "\n")
+        open(os.path.join(ad, name + ".txt"), "w").write(full_style(style, run_trigger(), run_template()) + "\n")
         open(os.path.join(ad, name + ".lyrics.txt"), "w").write(lyrics + "\n")
         open(os.path.join(ald, name + ".lyrics.txt"), "w").write(lyrics + "\n")
         if strig is not None:
@@ -682,6 +693,11 @@ class H(http.server.BaseHTTPRequestHandler):
             pass
         cfg["trigger"] = trig
         json.dump(cfg, open(cfgp, "w"))
+        tmpl = str(c.get("template", "")).strip().lower()
+        if tmpl in ("full", "short"):
+            cfg["template"] = tmpl
+        else:
+            tmpl = cfg.get("template", "full")
         n = 0
         if trig:
             for f in glob.glob(os.path.join(base, "artist", "*.txt")):
@@ -691,7 +707,7 @@ class H(http.server.BaseHTTPRequestHandler):
                     cur = open(f, errors="replace").read().strip()
                 except Exception:
                     continue
-                want = full_style(cur, trig)
+                want = full_style(cur, trig, tmpl)
                 if want != cur:
                     open(f, "w").write(want + "\n")
                     n += 1
