@@ -772,6 +772,9 @@ class H(http.server.BaseHTTPRequestHandler):
             if not name:
                 errs.append(f"{fname}: bad name")
                 continue
+            if not blob:
+                errs.append(f"{fname}: arrived empty (0 bytes) — retry the upload")
+                continue
             tmp = os.path.join(ad, name + ".incoming" + os.path.splitext(fname)[1].lower())
             open(tmp, "wb").write(blob)
             out = os.path.join(ad, name + ".flac")
@@ -791,12 +794,12 @@ class H(http.server.BaseHTTPRequestHandler):
                 pass
             if r.returncode != 0 or not os.path.exists(out):
                 errs.append(f"{fname}: ffmpeg rejected it")
-            elif os.path.getsize(out) < 100 * 1024:
+            elif os.path.getsize(out) < 10240:
                 try:
                     os.remove(out)
                 except Exception:
                     pass
-                errs.append(f"{fname}: arrived empty (0 bytes) — retry the upload")
+                errs.append(f"{fname}: convert produced nothing usable — retry")
             else:
                 done.append(name)
         if not done:
