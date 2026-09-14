@@ -57,9 +57,11 @@ Example:
 ## 4. How much is enough
 
 - **Sweet spot: 20–30 songs** (~60–90 minutes total). This is proven territory.
-- **Workable minimum: ~10 songs.** Below that the model memorizes instead
-  of learning style — you get the same 3 songs regurgitated, not new music
-  in the style. If you must run small, cut training short (~800 steps).
+- **Absolute floor: 7 songs.** The UI enforces this. Below it the model
+  memorizes instead of learning style — you get the same songs regurgitated,
+  not new music in the style. If you run at the floor, cut training short
+  (~800 steps).
+- **Recommended: 10+, sweet spot 20–30** (~60–90 minutes total).
 - What matters is **total minutes + variety** (different songs/tempos, one
   voice), not just file count. One artist per run — mixed artists mix up
   the voice.
