@@ -692,12 +692,12 @@ class H(http.server.BaseHTTPRequestHandler):
         except Exception:
             pass
         cfg["trigger"] = trig
-        json.dump(cfg, open(cfgp, "w"))
         tmpl = str(c.get("template", "")).strip().lower()
         if tmpl in ("full", "short"):
             cfg["template"] = tmpl
         else:
             tmpl = cfg.get("template", "full")
+        json.dump(cfg, open(cfgp, "w"))
         n = 0
         if trig:
             for f in glob.glob(os.path.join(base, "artist", "*.txt")):
