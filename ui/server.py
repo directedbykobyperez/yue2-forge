@@ -416,7 +416,7 @@ class H(http.server.BaseHTTPRequestHandler):
         else:
             import time as _t, html as _h
             d = snapshot()
-            st = f"<div class='muted'>SERVER { _t.strftime('%H:%M:%S') }: step {d['step']}/{TOTAL} ({d['pct']}%) | {d['phase']} | loss {d['loss']} | artist {d['artist_eval']} | minted {d['minted_eval']}</div>"
+            st = f"<div class='muted'>SERVER { _t.strftime('%H:%M:%S') } · run {active_run()}: step {d['step']}/{TOTAL} ({d['pct']}%) | {d['phase']} | loss {d['loss']} | artist {d['artist_eval']} | minted {d['minted_eval']}</div>"
             ss = ""
             for x in d["samples"]:
                 ss += f"<div class='ckpt'><b>step {x['step']}</b> <span class='muted'>{x['secs']}s</span><br><audio controls preload='none' style='width:100%' src='/m/{x['file']}'></audio><br><a class='dl' href='/m/{x['file']}' download='{x['file']}'>Download MP3</a></div>"
