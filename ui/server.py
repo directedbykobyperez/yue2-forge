@@ -10,6 +10,8 @@ CFG = "/workspace/sample_cfg.json"
 STYLE_FILE = "/workspace/real/artist/sample.txt"
 LYR_FILE = "/workspace/sample_lyrics.txt"
 TOTAL = int(os.environ.get("FORGE_TOTAL", "1600"))
+RUNS = os.environ.get("FORGE_RUNS", "/workspace/runs")
+AUDIO_EXTS = (".flac", ".wav", ".ogg", ".mp3", ".m4a")
 DL = {
     "ckpt": (OUT, r"^(step-\d+|best|last)\.pt$"),
     "log": ("/workspace", r"^(ar_train|gen|watcher|watcher_out|prep_real|cursor_prep2?|ar_prep)\.log$"),
@@ -43,6 +45,10 @@ pre{background:#000;padding:10px;border-radius:8px;overflow:auto;max-height:220p
 <div class="card">minted_val eval<div><b id="mval">-</b></div></div>
 <div class="card">ETA<div><b id="eta">-</b></div></div>
 </div>
+<h3>Dataset studio <span class="muted" id="ds_run"></span></h3>
+<div class="ckpt">trigger word — empty means caption-only mode (style bleeds into everything)<br><input id="ds_trig" style="width:200px;background:#000;color:#eee;border:1px solid #444;border-radius:6px;padding:8px"> <button onclick="saveTrig()" style="padding:8px 16px;border-radius:6px;border:0;background:#7c3aed;color:#fff">Save</button> <span id="trig_msg" class="muted"></span><br><span class="muted" id="ds_count"></span></div>
+<div class="ckpt">new song audio (wav/flac/ogg/mp3/m4a, converts to flac)<br><input type="file" id="up_file" accept="audio/*,.wav,.flac,.ogg,.mp3,.m4a"> name <input id="up_name" placeholder="song_name" style="width:180px;background:#000;color:#eee;border:1px solid #444;border-radius:6px;padding:8px"> <button onclick="upAudio()" style="padding:8px 16px;border-radius:6px;border:0;background:#7c3aed;color:#fff">Upload</button> <span id="up_msg" class="muted"></span></div>
+<div id="songs"></div>
 <h3>Samples (your custom prompt below)</h3>
 <!--STATIC_SAMPLES-->
 <div id="samples"></div>
@@ -59,6 +65,19 @@ Seed <input id="f_seed" value="CFGSEED" type="number" style="width:100px;backgro
 <div class="muted">V1</div>
 <script>
 let dirty=false;for(const id of ['f_style','f_lyr','f_seed']){document.getElementById(id).addEventListener('input',()=>dirty=true);}
+let trigDirty=false,songsDirty=false;
+document.getElementById('ds_trig').addEventListener('input',()=>trigDirty=true);
+async function saveTrig(){const r=await fetch('/set_trigger',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({trigger:document.getElementById('ds_trig').value})});const d=await r.json();document.getElementById('trig_msg').textContent=d.ok?('saved: '+(d.trigger||'(caption-only mode)')):('error: '+d.error);trigDirty=false;tick();}
+async function saveSong(n){const st=document.getElementById('st_'+n).value,ly=document.getElementById('ly_'+n).value;
+const r=await fetch('/save_song',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({name:n,style:st,lyrics:ly})});const d=await r.json();
+document.getElementById('msg_'+n).textContent=d.ok?('saved'+(d.issues&&d.issues.length?' — still: '+d.issues.join('; '):' — ready ✔')):('error: '+d.error);songsDirty=false;tick();}
+async function delSong(n){if(!confirm('delete '+n+'?'))return;await fetch('/delete_song',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({name:n})});songsDirty=false;tick();}
+async function upAudio(){const f=document.getElementById('up_file').files[0];const m=document.getElementById('up_msg');
+if(!f){m.textContent='pick a file first';return;}
+const n=document.getElementById('up_name').value||f.name.replace(/\.[^.]+$/,'');
+m.textContent='uploading + converting...';const fd=new FormData();fd.append('audio',f,f.name);
+try{const r=await fetch('/upload_audio?name='+encodeURIComponent(n),{method:'POST',body:fd});const d=await r.json();
+m.textContent=d.ok?('done: '+d.mb+' MB flac — now add caption + lyrics below'):('error: '+d.error);}catch(e){m.textContent='upload failed: '+e.message;}tick();}
 const players={};
 async function togglePlay(step,file,btn){
 let p=players[step];
@@ -91,7 +110,7 @@ document.getElementById('eval').textContent=d.artist_eval;
 document.getElementById('mval').textContent=d.minted_eval;
 document.getElementById('eta').textContent=d.eta;
 document.getElementById('log').textContent=d.log_tail;
-const sig=JSON.stringify([d.samples,d.checkpoints,d.files]);
+const sig=JSON.stringify([d.samples,d.checkpoints,d.files,d.studio]);
 if(sig!==lastSig){lastSig=sig;
 let s='';if(d.samples.length==0){s='no samples yet - first one lands at step 600';}
 for(const x of d.samples){s+='<div class="ckpt"><b>step '+x.step+'</b> <span class="muted">'+x.secs+'s</span><br><button class="play" onclick="togglePlay('+x.step+',\''+x.file+'\',this)">\u25B6</button><input class="seek" type="range" id="seek'+x.step+'" value="0" step="0.1"> <span id="t'+x.step+'" class="muted">0:00</span><div class="bar" style="height:6px"><div class="fill" id="bar'+x.step+'"></div></div><a class="dl" href="/m/'+x.file+'" download="'+x.file+'">\u2B07 Download MP3</a></div>';}
@@ -106,12 +125,19 @@ h+='<div class="ckpt"><b>'+names[k]+'</b><br>';
 for(const x of g[k]){h+='<a style="color:#22d3ee" href="/d/'+x.g+'/'+x.file+'">'+x.file+'</a> <span class="muted">'+x.mb+' MB</span><br>';}h+='</div>';}
 document.getElementById('dl').innerHTML=h||'nothing yet';
 }
+if(d.studio){document.getElementById('ds_run').textContent='run: '+d.studio.run;
+document.getElementById('ds_count').textContent=d.studio.ready+' / '+d.studio.total+' songs ready';
+if(!trigDirty)document.getElementById('ds_trig').value=d.studio.trigger||'';
+if(!songsDirty){let q='';if(!d.studio.songs.length)q='<div class="muted">no songs yet — upload audio above, then add caption + lyrics per song</div>';
+for(const x of d.studio.songs){const ok=x.issues.length===0;
+q+='<div class="ckpt"><b>'+x.name+'</b> '+(x.audio?'<span class="muted">'+x.audio.mb+' MB flac</span>':'<span class="muted">no audio</span>')+' '+(ok?'\u2714 ready':'<span style="color:#f59e0b">'+x.issues.join('; ')+'</span>')+'<br>style<br><input id="st_'+x.name+'" oninput="songsDirty=true" value="'+String(x.style).replace(/&/g,'&amp;').replace(/"/g,'&quot;').replace(/</g,'&lt;')+'" style="width:100%;background:#000;color:#eee;border:1px solid #444;border-radius:6px;padding:8px"><br>lyrics<br><textarea id="ly_'+x.name+'" oninput="songsDirty=true" rows="6" style="width:100%;background:#000;color:#eee;border:1px solid #444;border-radius:6px;padding:8px">'+String(x.lyrics).replace(/&/g,'&amp;').replace(/</g,'&lt;')+'</textarea><br><button onclick="saveSong(\''+x.name+'\')" style="padding:6px 14px;border-radius:6px;border:0;background:#7c3aed;color:#fff">Save</button> <button onclick="delSong(\''+x.name+'\')" style="padding:6px 14px;border-radius:6px;border:1px solid #666;background:#222;color:#eee">Delete</button> <span id="msg_'+x.name+'" class="muted"></span></div>';}
+document.getElementById('songs').innerHTML=q;}}
 if(!dirty&&d.cfg){document.getElementById('f_style').value=d.cfg.style;document.getElementById('f_lyr').value=d.cfg.lyrics;document.getElementById('f_seed').value=d.cfg.seed;}
 }catch(e){document.getElementById('pct').textContent='connection error ('+e.message+'), retrying...';}}tick();setInterval(tick,3000);</script></body></html>"""
 
 def snapshot():
     d = {"step": 0, "pct": 0.0, "phase": "starting", "loss": "-", "artist_eval": "-",
-         "minted_eval": "-", "eta": "-", "note": "", "checkpoints": [], "samples": [], "files": [], "log_tail": "", "step_est": 0, "cfg": {}}
+         "minted_eval": "-", "eta": "-", "note": "", "checkpoints": [], "samples": [], "files": [], "log_tail": "", "step_est": 0, "cfg": {}, "studio": {}}
     try:
         lines = open(LOG, errors="replace").read().splitlines()
     except Exception:
@@ -204,7 +230,68 @@ def snapshot():
     except Exception:
         ly = ""
     d["cfg"] = {"style": st, "lyrics": ly, "seed": cfg.get("seed", 12)}
+    d["studio"] = studio_snapshot()
     return d
+
+def _registry():
+    try:
+        return json.load(open(os.path.join(RUNS, "registry.json")))
+    except Exception:
+        return {}
+def active_run():
+    return _registry().get("active") or os.environ.get("RUN_NAME", "my_lora")
+def run_paths(name=None):
+    name = name or active_run()
+    base = os.path.join(RUNS, name)
+    return base, os.path.join(base, "artist"), os.path.join(base, "artist_lyrics")
+def run_trigger(name=None):
+    try:
+        return json.load(open(os.path.join(run_paths(name)[0], "config.json"))).get("trigger", "")
+    except Exception:
+        return ""
+def clean_name(n):
+    return re.sub(r"[^a-z0-9_]+", "_", (n or "").strip().lower()).strip("_")[:48]
+def validate_song(base, ad, trig):
+    info = {"name": base, "audio": None, "style": "", "lyrics": "", "lines": 0, "tags": [], "issues": []}
+    for f in glob.glob(os.path.join(ad, base + ".*")):
+        fn = os.path.basename(f)
+        if fn == base + ".lyrics.txt":
+            info["lyrics"] = open(f, errors="replace").read().strip()
+        elif fn == base + ".txt":
+            info["style"] = open(f, errors="replace").read().strip()
+        elif os.path.splitext(fn)[1].lower() in AUDIO_EXTS:
+            info["audio"] = {"file": fn, "mb": round(os.path.getsize(f) / 2**20, 1)}
+    lines = [l for l in info["lyrics"].splitlines() if l.strip()]
+    info["lines"] = len(lines)
+    info["tags"] = sorted(set(re.findall(r"^\s*(\[[^\]]+\])\s*$", info["lyrics"], re.M)))
+    if not info["audio"]:
+        info["issues"].append("no audio — upload it below")
+    if not info["style"]:
+        info["issues"].append("no style caption")
+    elif trig and trig.lower() not in info["style"].lower():
+        info["issues"].append(f"trigger '{trig}' missing from style")
+    if len(lines) < 8:
+        info["issues"].append(f"lyrics short ({len(lines)} lines, want 15+)")
+    if not info["tags"]:
+        info["issues"].append("no [section] tags in lyrics")
+    return info
+def studio_snapshot():
+    base, ad, _ = run_paths()
+    os.makedirs(ad, exist_ok=True)
+    bases = set()
+    for f in glob.glob(os.path.join(ad, "*")):
+        fn = os.path.basename(f)
+        if fn.endswith(".lyrics.txt"):
+            bases.add(fn[:-11])
+        elif fn.endswith(".txt"):
+            bases.add(fn[:-4])
+        elif os.path.splitext(fn)[1].lower() in AUDIO_EXTS:
+            bases.add(os.path.splitext(fn)[0])
+    trig = run_trigger()
+    songs = [validate_song(b, ad, trig) for b in sorted(bases) if clean_name(b) == b]
+    ok = sum(1 for s in songs if not s["issues"])
+    return {"run": active_run(), "trigger": trig, "songs": songs,
+            "ready": ok, "total": len(songs)}
 
 class H(http.server.BaseHTTPRequestHandler):
     def log_message(self, *a):
@@ -302,18 +389,33 @@ class H(http.server.BaseHTTPRequestHandler):
             self.wfile.write(b)
 
     def do_POST(self):
-        if self.path != "/save_cfg":
-            self.send_error(404)
-            return
+        path = self.path.split("?", 1)[0]
+        if path == "/save_cfg":
+            return self._post_save_cfg()
+        if path == "/save_song":
+            return self._post_save_song()
+        if path == "/delete_song":
+            return self._post_delete_song()
+        if path == "/set_trigger":
+            return self._post_set_trigger()
+        if path == "/upload_audio":
+            return self._post_upload_audio()
+        self.send_error(404)
+    def _body(self, limit):
         try:
             n = int(self.headers.get("Content-Length", 0))
         except Exception:
             n = 0
-        if n <= 0 or n > 20000:
+        if n <= 0 or n > limit:
+            return None
+        return self.rfile.read(n)
+    def _post_save_cfg(self):
+        raw = self._body(20000)
+        if raw is None:
             self._json({"ok": False, "error": "bad size"})
             return
         try:
-            c = json.loads(self.rfile.read(n))
+            c = json.loads(raw)
             style = str(c.get("style", "")).strip()[:1500]
             lyrics = str(c.get("lyrics", "")).strip()[:8000]
             seed = int(c.get("seed", 12))
@@ -328,6 +430,115 @@ class H(http.server.BaseHTTPRequestHandler):
         open(LYR_FILE, "w").write(lyrics + "\n")
         json.dump({"seed": seed}, open(CFG, "w"))
         self._json({"ok": True})
+    def _post_save_song(self):
+        raw = self._body(60000)
+        if raw is None:
+            self._json({"ok": False, "error": "bad size"})
+            return
+        try:
+            c = json.loads(raw)
+            name = clean_name(c.get("name", ""))
+            style = str(c.get("style", "")).strip()[:1500]
+            lyrics = str(c.get("lyrics", "")).strip()[:12000]
+            if not name:
+                raise ValueError("song name required (letters, numbers, _)")
+            if not style or not lyrics:
+                raise ValueError("style and lyrics required")
+        except Exception as e:
+            self._json({"ok": False, "error": str(e)[:120]})
+            return
+        _, ad, ald = run_paths()
+        os.makedirs(ad, exist_ok=True)
+        os.makedirs(ald, exist_ok=True)
+        open(os.path.join(ad, name + ".txt"), "w").write(style + "\n")
+        open(os.path.join(ad, name + ".lyrics.txt"), "w").write(lyrics + "\n")
+        open(os.path.join(ald, name + ".lyrics.txt"), "w").write(lyrics + "\n")
+        v = validate_song(name, ad, run_trigger())
+        self._json({"ok": True, "issues": v["issues"]})
+    def _post_delete_song(self):
+        raw = self._body(2000)
+        if raw is None:
+            self._json({"ok": False, "error": "bad size"})
+            return
+        try:
+            name = clean_name(json.loads(raw).get("name", ""))
+            if not name:
+                raise ValueError("song name required")
+        except Exception as e:
+            self._json({"ok": False, "error": str(e)[:120]})
+            return
+        _, ad, ald = run_paths()
+        for d in (ad, ald):
+            for f in glob.glob(os.path.join(d, name + ".*")):
+                os.remove(f)
+        self._json({"ok": True})
+    def _post_set_trigger(self):
+        raw = self._body(2000)
+        if raw is None:
+            self._json({"ok": False, "error": "bad size"})
+            return
+        try:
+            trig = re.sub(r"[^a-z0-9]+", "", str(json.loads(raw).get("trigger", "")).strip().lower())[:32]
+        except Exception as e:
+            self._json({"ok": False, "error": str(e)[:120]})
+            return
+        base, _, _ = run_paths()
+        os.makedirs(base, exist_ok=True)
+        cfgp = os.path.join(base, "config.json")
+        cfg = {}
+        try:
+            cfg = json.load(open(cfgp))
+        except Exception:
+            pass
+        cfg["trigger"] = trig
+        json.dump(cfg, open(cfgp, "w"))
+        self._json({"ok": True, "trigger": trig})
+    def _post_upload_audio(self):
+        ctype = self.headers.get("Content-Type", "")
+        m = re.match(r"multipart/form-data; boundary=(.+)$", ctype)
+        if not m:
+            self._json({"ok": False, "error": "need multipart upload"})
+            return
+        raw = self._body(400 * 1024 * 1024)
+        if raw is None:
+            self._json({"ok": False, "error": "file too big (400MB max)"})
+            return
+        try:
+            qs = self.path.split("?", 1)[1] if "?" in self.path else ""
+            name = clean_name(re.findall(r"(?:^|&)name=([^&]*)", qs)[0] if re.findall(r"(?:^|&)name=([^&]*)", qs) else "")
+            if not name:
+                raise ValueError("song name required (?name=...)")
+            bound = ("--" + m.group(1).strip().strip('"')).encode()
+            parts = raw.split(bound)
+            blob, fname = None, "upload.bin"
+            for p in parts:
+                if b'name="audio"' in p.split(b"\r\n\r\n", 1)[0]:
+                    head, blob = p.split(b"\r\n\r\n", 1)
+                    blob = blob.rsplit(b"\r\n", 1)[0]
+                    fm = re.search(rb'filename="([^"]+)"', head)
+                    if fm:
+                        fname = fm.group(1).decode("utf-8", "replace")
+                    break
+            if not blob:
+                raise ValueError("no audio file field")
+            ext = os.path.splitext(fname)[1].lower()
+            if ext not in AUDIO_EXTS:
+                raise ValueError(f"audio type {ext or '?'} not accepted (wav/flac/ogg/mp3/m4a)")
+        except Exception as e:
+            self._json({"ok": False, "error": str(e)[:120]})
+            return
+        _, ad, _ = run_paths()
+        os.makedirs(ad, exist_ok=True)
+        tmp = os.path.join(ad, name + ".incoming" + ext)
+        open(tmp, "wb").write(blob)
+        out = os.path.join(ad, name + ".flac")
+        r = subprocess.run(["ffmpeg", "-y", "-v", "error", "-i", tmp, "-c:a", "flac", out],
+                           capture_output=True)
+        os.remove(tmp)
+        if r.returncode != 0 or not os.path.exists(out):
+            self._json({"ok": False, "error": "ffmpeg could not read that audio"})
+            return
+        self._json({"ok": True, "mb": round(os.path.getsize(out) / 2**20, 1)})
     def _json(self, obj):
         b = json.dumps(obj).encode()
         self.send_response(200)
