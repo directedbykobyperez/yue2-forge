@@ -622,6 +622,7 @@ class H(http.server.BaseHTTPRequestHandler):
                 raise ValueError("lyrics look empty")
         except Exception as e:
             return self._fail(e, "3")
+        os.makedirs(os.path.dirname(STYLE_FILE) or ".", exist_ok=True)
         open(STYLE_FILE, "w").write(style + "\n")
         open(LYR_FILE, "w").write(lyrics + "\n")
         json.dump({"seed": seed}, open(CFG, "w"))
