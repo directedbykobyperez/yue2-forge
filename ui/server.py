@@ -12,6 +12,7 @@ LYR_FILE = "/workspace/sample_lyrics.txt"
 TOTAL = int(os.environ.get("FORGE_TOTAL", "1600"))
 RUNS = os.environ.get("FORGE_RUNS", "/workspace/runs")
 AUDIO_EXTS = (".flac", ".wav", ".ogg", ".mp3", ".m4a")
+MIN_SONGS = 10
 DL = {
     "ckpt": (OUT, r"^(step-\d+|best|last)\.pt$"),
     "log": ("/workspace", r"^(ar_train|gen|watcher|watcher_out|prep_real|cursor_prep2?|ar_prep)\.log$"),
@@ -56,7 +57,7 @@ pre{background:#000;padding:10px;border-radius:8px;overflow:auto;max-height:220p
 <div class="card">minted_val eval<div><b id="mval">-</b></div></div>
 <div class="card">ETA<div><b id="eta">-</b></div></div>
 </div>
-<div class="ckpt">training — active run only<br>from <select id="tr_init" style="background:#000;color:#eee;border:1px solid #444;border-radius:6px;padding:8px"><option value="fresh">fresh</option><option value="last">last.pt</option><option value="best">best.pt</option></select> to step <input id="tr_steps" type="number" value="1600" style="width:90px;background:#000;color:#eee;border:1px solid #444;border-radius:6px;padding:8px"> <button onclick="startTrain()" style="padding:8px 16px;border-radius:6px;border:0;background:#22c55e;color:#000">Start training</button> <span id="tr_msg" class="muted"></span><br><span class="muted">needs dataset ready first (finish songs above, then prep via scripts/run_all.sh steps 1-3)</span></div>
+<div class="ckpt">training — active run only<br>from <select id="tr_init" style="background:#000;color:#eee;border:1px solid #444;border-radius:6px;padding:8px"><option value="fresh">fresh</option><option value="last">last.pt</option><option value="best">best.pt</option></select> to step <input id="tr_steps" type="number" value="1600" style="width:90px;background:#000;color:#eee;border:1px solid #444;border-radius:6px;padding:8px"> <button onclick="startTrain()" style="padding:8px 16px;border-radius:6px;border:0;background:#22c55e;color:#000">Start training</button> <span id="tr_msg" class="muted"></span><br><span class="muted">needs 10+ ready songs + dataset prepped (finish songs above, then prep via scripts/run_all.sh steps 1-3)</span></div>
 <h3>Samples (your custom prompt below)</h3>
 <!--STATIC_SAMPLES-->
 <div id="samples"></div>
@@ -151,7 +152,7 @@ for(const x of g[k]){h+='<a style="color:#22d3ee" href="/d/'+x.g+'/'+x.file+'">'
 document.getElementById('dl').innerHTML=h||'nothing yet';
 }
 if(d.studio){document.getElementById('ds_run').textContent='run: '+d.studio.run;
-document.getElementById('ds_count').textContent=d.studio.ready+' / '+d.studio.total+' songs ready';
+document.getElementById('ds_count').textContent=d.studio.ready+' / '+d.studio.total+' songs ready (need 10+)';
 if(!trigDirty)document.getElementById('ds_trig').value=d.studio.trigger||'';
 if(!songsDirty){let q='';if(!d.studio.songs.length)q='<div class="muted">no songs yet — upload audio above, then add caption + lyrics per song</div>';
 for(const x of d.studio.songs){const ok=x.issues.length===0;
@@ -738,6 +739,19 @@ class H(http.server.BaseHTTPRequestHandler):
     def _post_start_training(self):
         if subprocess.run(["pgrep", "-f", "ar_train|ar_lora_"], capture_output=True).returncode == 0:
             self._json({"ok": False, "error": "training already running"})
+            return
+        base, ad, _ = run_paths()
+        trig = run_trigger()
+        ready = 0
+        for f in glob.glob(os.path.join(ad, "*.lyrics.txt")):
+            b = os.path.basename(f)[:-11]
+            if clean_name(b) != b:
+                continue
+            meta = _songs_meta()
+            if not validate_song(b, ad, meta.get(b, {}).get("trigger", "") or trig)["issues"]:
+                ready += 1
+        if ready < MIN_SONGS:
+            self._json({"ok": False, "error": f"need {MIN_SONGS}+ ready songs (have {ready}) — small sets memorize instead of learning style"})
             return
         raw = self._body(4000)
         if raw is None:
