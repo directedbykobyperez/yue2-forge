@@ -48,7 +48,7 @@ export RUN_NAME=my_lora TRIGGER=mytrigger
 bash scripts/run_all.sh
 ```
 
-Monitor at `http://<server>:8000` (or open a cloudflared tunnel for a public link).
+Monitor: `bash start.sh`, then open `http://localhost:8000`.
 
 ## Access: localhost vs public link
 
@@ -66,6 +66,8 @@ Monitor at `http://<server>:8000` (or open a cloudflared tunnel for a public lin
 | path | what |
 |---|---|
 | `install.sh` / `requirements.txt` | one-command server setup |
+| `start.sh` | launch dashboard → `http://localhost:8000` |
+| `tunnel.sh` | public link for headless servers (uses cloudflared) |
 | `scripts/` | pipeline: convert → prep → cursor → ar_prep → train → sample |
 | `ui/server.py` | progress dashboard: steps, evals, samples, prompt editor, downloads |
 | `docs/DATASET.md` | how to prepare songs, captions, triggers, lyrics |
