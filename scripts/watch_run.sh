@@ -7,6 +7,7 @@ NAR=${NAR_CK:-/workspace/tok/nar_lora_joint_v4.pt}
 STYLE=${SAMPLE_STYLE_TRACK:-sample}
 LYR=${SAMPLE_LYRICS:-/workspace/sample_lyrics.txt}
 export HF_HOME=/workspace/hf SCHED_STEPS=3000 CK_FROM=600 CK_EVERY=200 TOTAL_STEPS=${TOTAL_STEPS:-1600}
+CKPTS=${CKPTS:-"600 800 1000 1200 1400 1600"}
 SCRIPT_DIR="$(cd "$(dirname "$0")" && pwd)"
 cd "$SCRIPT_DIR"
 
@@ -61,7 +62,7 @@ echo "[watcher] started" > /workspace/watcher.log
 echo "{\"phase\": \"training\"}" > /workspace/ui/state.json
 while true; do
   latest=""
-  for t in ${CKPTS:-600\ 800\ 1000\ 1200\ 1400\ 1600}; do
+  for t in $CKPTS; do
     if [ -f $OUT/step-$t.pt ] && ! have_sample $t; then latest=$t; fi
   done
   if [ -n "$latest" ]; then
