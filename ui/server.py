@@ -59,6 +59,8 @@ pre{background:#000;padding:10px;border-radius:8px;overflow:auto;max-height:220p
 <div class="card">minted_val eval<div><b id="mval">-</b></div></div>
 <div class="card">ETA<div><b id="eta">-</b></div></div>
 </div>
+<div class="ckpt">dataset prep — features + stems + tokens (~40 min, runs in background)<br><form method="POST" action="/prepare_dataset"><button style="padding:8px 16px;border-radius:6px;border:0;background:#f59e0b;color:#000">Prepare dataset</button></form> <span class="muted" id="prep_line"></span></div>
+<!--STATIC_PREP-->
 <form method="POST" action="/start_training"><div class="ckpt">training — active run only<br>from <select name="init" style="background:#000;color:#eee;border:1px solid #444;border-radius:6px;padding:8px"><option value="fresh">fresh</option><option value="last">last.pt</option><option value="best">best.pt</option></select> to step <input name="steps" type="number" value="1600" style="width:90px;background:#000;color:#eee;border:1px solid #444;border-radius:6px;padding:8px"> <button style="padding:8px 16px;border-radius:6px;border:0;background:#22c55e;color:#000">Start training</button><br><span class="muted">needs 7+ ready songs + dataset prepped (finish songs above, then prep via scripts/run_all.sh steps 1-3)</span></div></form>
 <h3>Samples (your custom prompt below)</h3>
 <!--STATIC_SAMPLES-->
@@ -117,7 +119,7 @@ document.getElementById('eval').textContent=d.artist_eval;
 document.getElementById('mval').textContent=d.minted_eval;
 document.getElementById('eta').textContent=d.eta;
 document.getElementById('log').textContent=d.log_tail;
-const sig=JSON.stringify([d.samples,d.checkpoints,d.files,d.studio,d.runs]);
+const sig=JSON.stringify([d.samples,d.checkpoints,d.files,d.studio,d.runs,d.prep]);
 if(sig!==lastSig){lastSig=sig;
 let r='';for(const x of d.runs.runs){const act=x.name===d.runs.active;
 r+='<div class="ckpt">'+(act?'<b>'+x.name+' (active)</b>': '<b>'+x.name+'</b> <form method="POST" action="/switch_run" style="display:inline"><input type="hidden" name="name" value="'+x.name+'"><button>Switch</button></form>')+' <span class="muted">'+x.ready+'/'+x.total+' songs'+(x.ckpts.length?' | ckpts '+x.ckpts.join(','):'')+(x.best?' | best ✔':'')+'</span> <a href="/confirm_delete?run='+x.name+'" style="color:#f87171;text-decoration:none;font-size:18px" title="delete run">✕</a><br><form method="POST" action="/set_trigger">trigger: <input name="trigger" value="'+x.trigger+'" placeholder="empty = caption-only" style="width:160px;background:#000;color:#eee;border:1px solid #444;border-radius:6px;padding:8px"><input type="hidden" name="run" value="'+x.name+'"> caption: <select name="template"><option value="full"'+(x.template!=='short'?' selected':'')+'>trigger, in the style of…</option><option value="short"'+(x.template==='short'?' selected':'')+'>trigger, caption</option></select> <button>Save</button></form></div>';}
@@ -134,6 +136,7 @@ let h='';for(const k of Object.keys(names)){if(!g[k]||!g[k].length)continue;
 h+='<div class="ckpt"><b>'+names[k]+'</b><br>';
 for(const x of g[k]){h+='<a style="color:#22d3ee" href="/d/'+x.g+'/'+x.file+'">'+x.file+'</a> <span class="muted">'+x.mb+' MB</span><br>';}h+='</div>';}
 document.getElementById('dl').innerHTML=h||'nothing yet';
+document.getElementById('prep_line').textContent='prep: '+d.prep.stage+' — '+d.prep.detail;
 }
 if(d.studio){document.getElementById('ds_run').textContent='run: '+d.studio.run;
 document.getElementById('ds_count').textContent=d.studio.ready+' / '+d.studio.total+' songs ready (need 7+)';
@@ -149,7 +152,7 @@ if(!dirty&&d.cfg){document.getElementById('f_style').value=d.cfg.style;document.
 
 def snapshot():
     d = {"step": 0, "pct": 0.0, "phase": "starting", "loss": "-", "artist_eval": "-",
-         "minted_eval": "-", "eta": "-", "note": "", "checkpoints": [], "samples": [], "files": [], "log_tail": "", "step_est": 0, "cfg": {}, "studio": {}, "runs": {"active": "", "runs": []}}
+         "minted_eval": "-", "eta": "-", "note": "", "checkpoints": [], "samples": [], "files": [], "log_tail": "", "step_est": 0, "cfg": {}, "studio": {}, "runs": {"active": "", "runs": []}, "prep": {}}
     try:
         lines = open(LOG, errors="replace").read().splitlines()
     except Exception:
@@ -246,6 +249,7 @@ def snapshot():
     d["cfg"] = {"style": st, "lyrics": ly, "seed": cfg.get("seed", 12)}
     d["studio"] = studio_snapshot()
     d["runs"] = runs_snapshot()
+    d["prep"] = prep_status()
     return d
 
 def _registry():
@@ -393,6 +397,11 @@ def runs_snapshot():
                     "trigger": run_trigger(n), "template": run_template(n)})
     return {"active": active_run(), "runs": out}
 
+def prep_status():
+    try:
+        return json.load(open("/workspace/prep_status.json"))
+    except Exception:
+        return {"stage": "idle", "detail": "not started", "done": False, "error": ""}
 class H(http.server.BaseHTTPRequestHandler):
     def log_message(self, *a):
         pass
@@ -531,7 +540,8 @@ class H(http.server.BaseHTTPRequestHandler):
                 act = x["name"] == d["runs"]["active"]
                 sw = "" if act else f"<form method='POST' action='/switch_run' style='display:inline'><input type='hidden' name='name' value='{x['name']}'><button>Switch</button></form>"
                 rs += f"<div class='ckpt'><b>{x['name']}</b>{' (active)' if act else ''} <span class='muted'>{x['ready']}/{x['total']} songs" + (f" | ckpts {','.join(map(str, x['ckpts']))}" if x["ckpts"] else "") + "</span> " + sw + f" <a href='/confirm_delete?run={x['name']}' style='color:#f87171;text-decoration:none;font-size:18px' title='delete run'>✕</a><br><form method='POST' action='/set_trigger'>trigger: <input name='trigger' value='{_h.escape(x['trigger'], quote=True)}' placeholder='empty = caption-only' style='width:160px;background:#000;color:#eee;border:1px solid #444;border-radius:6px;padding:8px'><input type='hidden' name='run' value='{x['name']}'> caption: <select name='template'><option value='full'{(' selected' if x['template'] != 'short' else '')}>trigger, in the style of…</option><option value='short'{(' selected' if x['template'] == 'short' else '')}>trigger, caption</option></select> <button>Save</button></form></div>"
-            b = HTML.replace("<!--STATIC_STATUS-->", st).replace("<!--STATIC_SAMPLES-->", ss or "<div class='muted'>no samples yet</div>").replace("<!--STATIC_FILES-->", ff).replace("FILLPCT", str(d["pct"])).replace("<!--STATIC_SONGS-->", sg or "<div class='muted'>no songs yet</div>").replace("<!--STATIC_RUNS-->", rs or "<div class='muted'>no runs yet</div>")
+            pp = f"<div class='muted'>prep: {d['prep'].get('stage', 'idle')} — {d['prep'].get('detail', '')}</div>"
+            b = HTML.replace("<!--STATIC_STATUS-->", st).replace("<!--STATIC_SAMPLES-->", ss or "<div class='muted'>no samples yet</div>").replace("<!--STATIC_FILES-->", ff).replace("FILLPCT", str(d["pct"])).replace("<!--STATIC_SONGS-->", sg or "<div class='muted'>no songs yet</div>").replace("<!--STATIC_RUNS-->", rs or "<div class='muted'>no runs yet</div>").replace("<!--STATIC_PREP-->", pp)
             b = b.replace('class="tabradio" checked', 'class="tabradio"')
             b = b.replace(f'id="t{tab}" class="tabradio"', f'id="t{tab}" class="tabradio" checked')
             b = b.replace("<!--MSG-->", f"<div class='ckpt' style='border-color:#7c3aed'>{_h.escape(msg)}</div>" if msg else "")
@@ -568,6 +578,8 @@ class H(http.server.BaseHTTPRequestHandler):
             return self._post_start_training()
         if path == "/delete_run":
             return self._post_delete_run()
+        if path == "/prepare_dataset":
+            return self._post_prepare_dataset()
         self.send_error(404)
     def _body(self, limit):
         try:
@@ -923,7 +935,33 @@ class H(http.server.BaseHTTPRequestHandler):
                          stdout=log, stderr=subprocess.STDOUT, stdin=subprocess.DEVNULL,
                          start_new_session=True, env=env)
         return self._ok({"ok": True, "run": name, "msg": f"training {name} {start}→{total}"}, "3")
-    def _post_delete_run(self):
+    def _post_prepare_dataset(self):
+        if subprocess.run(["pgrep", "-f", "ar_train|ar_lora_"], capture_output=True).returncode == 0:
+            return self._fail("training already running", "3")
+        if subprocess.run(["pgrep", "-f", "prepare_run"], capture_output=True).returncode == 0:
+            return self._fail("prep already running", "3")
+        base, ad, _ = run_paths()
+        trig = run_trigger()
+        ready = 0
+        for f in glob.glob(os.path.join(ad, "*.lyrics.txt")):
+            b = os.path.basename(f)[:-11]
+            if clean_name(b) != b:
+                continue
+            meta = _songs_meta()
+            if not validate_song(b, ad, meta.get(b, {}).get("trigger", "") or trig)["issues"]:
+                ready += 1
+        if ready < MIN_SONGS:
+            return self._fail(f"need {MIN_SONGS}+ ready songs (have {ready})", "3")
+        repo = os.environ.get("FORGE_REPO", "/workspace/yue2-forge")
+        prep_sh = os.path.join(repo, "scripts", "prepare_run.sh")
+        if not os.path.exists(prep_sh):
+            return self._fail("prepare script missing on server", "3")
+        log = open("/workspace/prep.log", "a")
+        subprocess.Popen(["bash", prep_sh], stdout=log, stderr=subprocess.STDOUT,
+                         stdin=subprocess.DEVNULL, start_new_session=True,
+                         env=dict(os.environ, HF_HOME="/workspace/hf",
+                                  REG_PACK="/workspace/real/regularizer/minted_regularizer_pack.pt"))
+        return self._ok({"ok": True, "msg": "prep started (prep → cursor → ar_prep)"}, "3")
         if subprocess.run(["pgrep", "-f", "ar_train|ar_lora_"], capture_output=True).returncode == 0:
             return self._fail("stop training first — refusing to delete under a live run", "1")
         c = self._fields()
