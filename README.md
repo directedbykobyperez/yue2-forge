@@ -10,6 +10,14 @@
 
 📺 **Need help?** https://www.youtube.com/@directedbykobyperez
 
+## The dashboard
+
+Runs, dataset studio, and training — everything in the browser:
+
+![Training tab](assets/training-tab.png)
+
+*More screenshots coming.*
+
 yue2-forge is a complete pipeline that teaches [YuE2](https://github.com/multimodal-art-projection/YuE)
 to sing in a specific artist's voice and style, using the
 [Mothersuperior real-audio tokenizer](https://huggingface.co/Mothersuperior/yue2-mothersuperior-realaudio-tokenizer-v4)
