@@ -39,6 +39,7 @@ pre{background:#000;padding:10px;border-radius:8px;overflow:auto;max-height:220p
 <!--MSG-->
 <input type="radio" name="ftab" id="t1" class="tabradio" checked><input type="radio" name="ftab" id="t2" class="tabradio"><input type="radio" name="ftab" id="t3" class="tabradio">
 <div class="tabs"><label for="t1" id="tb1" class="tab" onclick="tab(1)">1 · Runs</label><label for="t2" id="tb2" class="tab" onclick="tab(2)">2 · Dataset studio</label><label for="t3" id="tb3" class="tab" onclick="tab(3)">3 · Training</label></div>
+<!--REFRESH-->
 <div id="pane1"><h3>Runs</h3>
 <div id="runs"></div><!--STATIC_RUNS-->
 <form method="POST" action="/create_run"><div class="ckpt">new: <input name="name" placeholder="artist_name" style="width:180px;background:#000;color:#eee;border:1px solid #444;border-radius:6px;padding:8px"> <button style="padding:8px 16px;border-radius:6px;border:0;background:#7c3aed;color:#fff">Create</button> <span class="muted">then set its trigger below</span></div></form>
@@ -545,6 +546,7 @@ class H(http.server.BaseHTTPRequestHandler):
             b = b.replace('class="tabradio" checked', 'class="tabradio"')
             b = b.replace(f'id="t{tab}" class="tabradio"', f'id="t{tab}" class="tabradio" checked')
             b = b.replace("<!--MSG-->", f"<div class='ckpt' style='border-color:#7c3aed'>{_h.escape(msg)}</div>" if msg else "")
+            b = b.replace("<!--REFRESH-->", f"<div style='text-align:right'><a class='dl' href='/?tab={tab}'>↻ Refresh numbers</a> <span class='muted'>(auto-refresh is blocked in your browser)</span></div>")
             b = b.replace('<b id="step">-</b>', f"<b id=\"step\">{d['step_est']}</b>").replace('<b id="phase">-</b>', f"<b id=\"phase\">{d['phase']}</b>").replace('<b id="loss">-</b>', f"<b id=\"loss\">{d['loss']}</b>").replace('<b id="eval">-</b>', f"<b id=\"eval\">{d['artist_eval']}</b>").replace('<b id="mval">-</b>', f"<b id=\"mval\">{d['minted_eval']}</b>")
             b = b.replace('<b id="eta">-</b>', f"<b id=\"eta\">{d['eta']}</b>")
             b = b.replace("FORGETITLE", _h.escape(os.environ.get("FORGE_TITLE", "YuE2-forge LoRA training")))
