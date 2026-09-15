@@ -36,4 +36,4 @@ pack=torch.load(PACK, map_location="cpu", weights_only=False); nm=0
 for r_ in pack:
     y=np.asarray(r_["codec"]).astype(np.int32); sd=int(hashlib.md5(r_["name"].encode()).hexdigest(),16)%100000
     data.append(dict(name=r_["name"], src=r_["src"], style=r_["style"], lyrics=r_["lyrics"], prefix=token_prefixes(SongRequest(style=r_["style"],lyrics=r_["lyrics"],cot="off",seed=sd,id=r_["name"]),tok), codec=y)); nm+=1
-print("minted", nm, flush=True); torch.save(data, "/workspace/real/ar/dataset.pt"); print("AR PREP DONE", len(data), flush=True)
+print("minted", nm, flush=True); os.makedirs("/workspace/real/ar", exist_ok=True); torch.save(data, "/workspace/real/ar/dataset.pt"); print("AR PREP DONE", len(data), flush=True)
