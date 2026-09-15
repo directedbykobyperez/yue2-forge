@@ -4,6 +4,12 @@
 
 **Train YuE2 artist LoRAs from your own songs — upload, caption, train, listen.**
 
+> 🧪 **First version (v1).** If something doesn't work for you, tell me —
+> open an issue or reach out. Tested working on NVIDIA L4.
+> 🎬 Video guide drops tomorrow.
+
+📺 **Need help?** https://www.youtube.com/@directedbykobyperez
+
 yue2-forge is a complete pipeline that teaches [YuE2](https://github.com/multimodal-art-projection/YuE)
 to sing in a specific artist's voice and style, using the
 [Mothersuperior real-audio tokenizer](https://huggingface.co/Mothersuperior/yue2-mothersuperior-realaudio-tokenizer-v4)
