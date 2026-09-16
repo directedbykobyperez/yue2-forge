@@ -38,17 +38,17 @@ pre{background:#000;padding:10px;border-radius:8px;overflow:auto;max-height:220p
 <body><div class="hdr"><h2>&#127926; FORGETITLE</h2><div id="gpu">
 <!--STATIC_GPU--></div></div>
 <!--MSG-->
-<div class="tabs"><a class="tabTAB1ON" href="/?tab=1">1 · Runs</a><a class="tabTAB2ON" href="/?tab=2">2 · Dataset studio</a><a class="tabTAB3ON" href="/?tab=3">3 · Training</a><a class="tabTAB4ON" href="/?tab=4">4 · Logs</a></div>
-<!--PANE1--><h3>Runs</h3>
+<div class="tabs"><a class="tab on" data-tab="1">1 · Runs</a><a class="tab" data-tab="2">2 · Dataset studio</a><a class="tab" data-tab="3">3 · Training</a><a class="tab" data-tab="4">4 · Logs</a></div>
+<div id="pane1" class="pane"><h3>Runs</h3>
 <div id="runs"></div><!--STATIC_RUNS-->
 <form method="POST" action="/create_run"><div class="ckpt">new: <input name="name" placeholder="artist_name" style="width:180px;background:#000;color:#eee;border:1px solid #444;border-radius:6px;padding:8px"> <button style="padding:8px 16px;border-radius:6px;border:0;background:#7c3aed;color:#fff">Create</button> <span class="muted">then set its trigger below</span></div></form>
-<!--ENDPANE1-->
-<!--PANE2--><h3>Dataset studio <span class="muted" id="ds_run"></span></h3>
+</div>
+<div id="pane2" class="pane" style="display:none"><h3>Dataset studio <span class="muted" id="ds_run"></span></h3>
 <div class="ckpt"><span class="muted" id="ds_count"></span></div>
 <form method="POST" action="/upload_audio" enctype="multipart/form-data"><div class="ckpt">songs + lyrics files — pick many at once. audio (wav/flac/ogg/mp3/m4a/webm) converts to flac; a matching <b>songname.txt</b> auto-fills that song's lyrics<br><input type="file" name="audio" multiple accept="audio/*,.wav,.flac,.ogg,.mp3,.m4a,.webm,.txt"> <button style="padding:8px 16px;border-radius:6px;border:0;background:#7c3aed;color:#fff">Upload</button></div></form>
 <div id="songs"></div><!--STATIC_SONGS-->
-<!--ENDPANE2-->
-<!--PANE3--><!--STATIC_STATUS-->
+</div>
+<div id="pane3" class="pane" style="display:none"><!--STATIC_STATUS-->
 <iframe src="/live-mini" style="width:100%;height:118px;border:1px solid #2C2C2C;border-radius:10px;overflow:hidden" scrolling="no" title="live progress"></iframe>
 <h3>Loss graph</h3><!--LOSSGRAPH-->
 <div class="bar"><div class="fill" id="fill" style="width:FILLPCT%"></div></div>
@@ -80,11 +80,13 @@ pre{background:#000;padding:10px;border-radius:8px;overflow:auto;max-height:220p
 
 <div class="muted">V1</div>
 </div>
-<!--ENDPANE3-->
-<!--PANE4--><h3>Log tail</h3><pre id="log">STATICLOG</pre>
-<!--ENDPANE4-->
+</div>
+<div id="pane4" class="pane" style="display:none"><h3>Log tail</h3><pre id="log">STATICLOG</pre></div>
 <script>
 let songsDirty=false;
+var activeTab=localStorage.getItem('forge_tab')||'1';
+function switchTab(t){activeTab=t;localStorage.setItem('forge_tab',t);document.querySelectorAll('.pane').forEach(function(p){p.style.display='none';});document.getElementById('pane'+t).style.display='';document.querySelectorAll('.tab').forEach(function(b){b.classList.toggle('on',b.dataset.tab===t);});}
+document.addEventListener('DOMContentLoaded',function(){switchTab(activeTab);document.querySelectorAll('.tab').forEach(function(b){b.addEventListener('click',function(){switchTab(this.dataset.tab);});});});
 document.addEventListener('click',function(e){
 var t=e.target;
 if(t.classList.contains('play')){togglePlay(t.dataset.k,t.dataset.file,t);return;}
@@ -620,7 +622,7 @@ class H(http.server.BaseHTTPRequestHandler):
             ckd = os.path.join("/workspace/tok/full", name)
             nckpt = len(glob.glob(os.path.join(ckd, "*.pt")))
             nsamp = len(glob.glob(os.path.join(GEN, name + "_s*.mp3")))
-            page = f"""<!DOCTYPE html><html><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>delete {name}?</title><style>body{{background:#111;color:#eee;font-family:system-ui,sans-serif;max-width:560px;margin:0 auto;padding:20px}}.warn{{background:#3a1414;border:1px solid #f87171;border-radius:8px;padding:14px}}button{{padding:10px 20px;border-radius:6px;font-size:15px}}a{{color:#22d3ee}}</style></head><body><h2>Delete run '{name}'?</h2><div class="warn">This permanently removes:<br>· {nsongs} song(s) + captions + lyrics<br>· {nckpt} checkpoint file(s) incl. LoRAs<br>· {nsamp} sample track(s)<br><br>Cannot be undone. Download anything you want to keep first.</div><br><form method="POST" action="/delete_run"><input type="hidden" name="name" value="{name}"><button style="border:0;background:#dc2626;color:#fff">Yes, delete everything</button></form><br><a href="/?tab=1">Cancel — keep my run</a></body></html>"""
+            page = f"""<!DOCTYPE html><html><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>delete {name}?</title><style>body{{background:#111;color:#eee;font-family:system-ui,sans-serif;max-width:560px;margin:0 auto;padding:20px}}.warn{{background:#3a1414;border:1px solid #f87171;border-radius:8px;padding:14px}}button{{padding:10px 20px;border-radius:6px;font-size:15px}}a{{color:#22d3ee}}</style></head><body><h2>Delete run '{name}'?</h2><div class="warn">This permanently removes:<br>· {nsongs} song(s) + captions + lyrics<br>· {nckpt} checkpoint file(s) incl. LoRAs<br>· {nsamp} sample track(s)<br><br>Cannot be undone. Download anything you want to keep first.</div><br><form method="POST" action="/delete_run"><input type="hidden" name="name" value="{name}"><button style="border:0;background:#dc2626;color:#fff">Yes, delete everything</button></form><br><a href="/">Cancel — keep my run</a></body></html>"""
             b = page.encode()
             self.send_response(200)
             self.send_header("Content-Type", "text/html")
@@ -629,11 +631,11 @@ class H(http.server.BaseHTTPRequestHandler):
             self.wfile.write(b)
         else:
             import time as _t, html as _h, urllib.parse as _uq
-            q = self.path.split("?", 1)[1] if "?" in self.path else ""
-            qq = _uq.parse_qs(q)
-            tab = qq.get("tab", ["1"])[0]
-            tab = tab if tab in ("1", "2", "3", "4") else "1"
-            msg = qq.get("msg", [""])[0][:200]
+            msg = ""
+            if "?" in self.path:
+                q = self.path.split("?", 1)[1]
+                qq = _uq.parse_qs(q)
+                msg = qq.get("msg", [""])[0][:200]
             d = snapshot()
             st = f"<div class='muted'>SERVER { _t.strftime('%H:%M:%S') } · run {active_run()}: step {d['step']}/{TOTAL} ({d['pct']}%) | {d['phase']} | loss {d['loss']} | artist {d['artist_eval']} | minted {d['minted_eval']}</div>"
             ss = ""
@@ -694,10 +696,7 @@ class H(http.server.BaseHTTPRequestHandler):
             b = b.replace('<b id="eta">-</b>', f"<b id=\"eta\">{d['eta']}</b>")
             b = b.replace("FORGETITLE", _h.escape(os.environ.get("FORGE_TITLE", "YuE2-forge LoRA training")))
             for _i in (1, 2, 3, 4):
-                if str(_i) != tab:
-                    b = re.sub(rf"<!--PANE{_i}-->.*?<!--ENDPANE{_i}-->", "", b, flags=re.S)
                 b = b.replace(f"<!--PANE{_i}-->", "").replace(f"<!--ENDPANE{_i}-->", "")
-                b = b.replace(f"TAB{_i}ON", " on" if str(_i) == tab else "")
             b = b.replace("CFGSTYLE", _h.escape(d["cfg"].get("style", ""), quote=True)).replace("CFGLYRICS", _h.escape(d["cfg"].get("lyrics", ""), quote=False)).replace('value="CFGSEED"', f"value=\"{d['cfg'].get('seed', 12)}\"").replace("WALKCHECKED", " checked" if d["cfg"].get("walk") else "")
             b = b.replace("STATICLOG", _h.escape(d["log_tail"] or "no log yet", quote=False))
             b = b.encode()
@@ -754,7 +753,7 @@ class H(http.server.BaseHTTPRequestHandler):
         return {k: v[0] for k, v in _up.parse_qs(raw.decode("utf-8", "replace")).items()}
     def _done(self, tab="1", msg=""):
         import urllib.parse as _up
-        loc = "/?tab=" + tab + ("&msg=" + _up.quote(msg[:200]) if msg else "")
+        loc = "/" + ("?msg=" + _up.quote(msg[:200]) if msg else "")
         self.send_response(303)
         self.send_header("Location", loc)
         self.end_headers()
