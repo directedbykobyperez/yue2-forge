@@ -15,7 +15,7 @@ train_pid() { pgrep -f "ar_lora_" | head -1; }
 have_sample() { ls $GEN/${RUN_NAME:-my_lora}_s$1.mp3 $GEN/${RUN_NAME:-my_lora}_s$1.flac >/dev/null 2>&1; }
 
 sample_step() {
-  local t=$1
+  local t=$1; export CKSTEP=$t
   echo "{\"phase\": \"sampling\", \"step\": $t}" > /workspace/ui/state.json
   echo "[watcher] sampling step-$t" >> /workspace/watcher.log
   if [ "$t" -lt 1600 ]; then
@@ -44,7 +44,7 @@ sample_step() {
   fi
   SEED=12
   if [ -f /workspace/sample_cfg.json ]; then
-    SEED=$(python3 -c "import json; print(int(json.load(open('/workspace/sample_cfg.json')).get('seed',12)))" 2>/dev/null || echo 12)
+    SEED=$(python3 -c "import json; c=json.load(open('/workspace/sample_cfg.json')); b=int(c.get('seed',12)); print(b + int(__import__('os').environ.get('CKSTEP','0'))//200 if c.get('walk') else b)" 2>/dev/null || echo 12)
   fi
   echo "[watcher] sampling with seed $SEED" >> /workspace/watcher.log
   /workspace/yue2venv/bin/python -u "$SCRIPT_DIR/ar_generate.py" \

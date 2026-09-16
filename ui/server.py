@@ -86,7 +86,7 @@ input,textarea,select{font-size:14px}
 <div id="pct" class="muted"></div>
 </div>
 
-<form method="POST" action="/start_training"><div class="ckpt">training — active run only<br>from <select name="init" style="background:#000;color:#eee;border:1px solid #444;border-radius:6px;padding:8px"><option value="fresh">fresh</option><option value="last">last.pt</option><option value="best">best.pt</option></select> to step <input name="steps" type="number" value="1600" style="width:90px;background:#000;color:#eee;border:1px solid #444;border-radius:6px;padding:8px"> <button style="padding:8px 16px;border-radius:6px;border:0;background:#E50914;color:#fff">Start training</button><br><span class="muted">needs 7+ ready songs + dataset prepped (finish songs above, then prep via scripts/run_all.sh steps 1-3)</span></div></form>
+<form method="POST" action="/start_training"><div class="ckpt">training — active run only<br>from <select name="init" style="background:#000;color:#eee;border:1px solid #444;border-radius:6px;padding:8px"><option value="fresh">fresh</option><option value="last">last.pt</option><option value="best">best.pt</option></select> rank <select name="rank"><option value="16">16</option><option value="32">32</option><option value="64" selected>64</option><option value="128">128</option></select> to step <input name="steps" type="number" value="1600" style="width:90px;background:#000;color:#eee;border:1px solid #444;border-radius:6px;padding:8px"> <button style="padding:8px 16px;border-radius:6px;border:0;background:#E50914;color:#fff">Start training</button><br><span class="muted">needs 7+ ready songs + dataset prepped (finish songs above, then prep via scripts/run_all.sh steps 1-3)</span></div></form>
 <h3>Samples (your custom prompt below)</h3>
 <!--STATIC_SAMPLES-->
 <div id="samples"></div>
@@ -95,7 +95,7 @@ input,textarea,select{font-size:14px}
 <div class="ckpt">
 Style<br><input id="f_style" name="style" value="CFGSTYLE" style="width:100%;background:#000;color:#eee;border:1px solid #444;border-radius:6px;padding:8px"><br><br>
 Lyrics<br><textarea id="f_lyr" name="lyrics" rows="9" style="width:100%;background:#000;color:#eee;border:1px solid #444;border-radius:6px;padding:8px">CFGLYRICS</textarea><br><br>
-Seed <input id="f_seed" name="seed" value="CFGSEED" type="number" style="width:100px;background:#000;color:#eee;border:1px solid #444;border-radius:6px;padding:8px">
+Seed <input id="f_seed" name="seed" value="CFGSEED" type="number" style="width:100px;background:#000;color:#eee;border:1px solid #444;border-radius:6px;padding:8px"> <label class="muted"><input type="checkbox" name="walk" value="1"WALKCHECKED> walk seed per checkpoint</label>
 <button style="padding:8px 16px;border-radius:6px;border:0;background:#E50914;color:#fff">Save</button></div></form>
 <div id="ckpts"></div>
 <h3>Downloads</h3><!--STATIC_FILES--><div id="dl"></div>
@@ -686,7 +686,7 @@ class H(http.server.BaseHTTPRequestHandler):
             b = b.replace('<b id="step">-</b>', f"<b id=\"step\">{d['step_est']}</b>").replace('<b id="phase">-</b>', f"<b id=\"phase\">{d['phase']}</b>").replace('<b id="loss">-</b>', f"<b id=\"loss\">{d['loss']}</b>").replace('<b id="eval">-</b>', f"<b id=\"eval\">{d['artist_eval']}</b>").replace('<b id="mval">-</b>', f"<b id=\"mval\">{d['minted_eval']}</b>")
             b = b.replace('<b id="eta">-</b>', f"<b id=\"eta\">{d['eta']}</b>")
             b = b.replace("FORGETITLE", _h.escape(os.environ.get("FORGE_TITLE", "YuE2-forge LoRA training")))
-            b = b.replace("CFGSTYLE", _h.escape(d["cfg"].get("style", ""), quote=True)).replace("CFGLYRICS", _h.escape(d["cfg"].get("lyrics", ""), quote=False)).replace('value="CFGSEED"', f"value=\"{d['cfg'].get('seed', 12)}\"")
+            b = b.replace("CFGSTYLE", _h.escape(d["cfg"].get("style", ""), quote=True)).replace("CFGLYRICS", _h.escape(d["cfg"].get("lyrics", ""), quote=False)).replace('value="CFGSEED"', f"value=\"{d['cfg'].get('seed', 12)}\"").replace("WALKCHECKED", " checked" if d["cfg"].get("walk") else "")
             b = b.replace("STATICLOG", _h.escape(d["log_tail"] or "no log yet", quote=False))
             b = b.encode()
             self.send_response(200)
@@ -778,9 +778,10 @@ class H(http.server.BaseHTTPRequestHandler):
         except Exception as e:
             return self._fail(e, "3")
         os.makedirs(os.path.dirname(STYLE_FILE) or ".", exist_ok=True)
+        walk = bool(str(c.get("walk", "")).strip().lower() in ("1", "on", "true", "yes"))
         open(STYLE_FILE, "w").write(style + "\n")
         open(LYR_FILE, "w").write(lyrics + "\n")
-        json.dump({"seed": seed}, open(CFG, "w"))
+        json.dump({"seed": seed, "walk": walk}, open(CFG, "w"))
         return self._ok({"ok": True, "msg": "sample prompt saved"}, "3")
     def _post_save_song(self):
         c = self._fields()
@@ -1042,6 +1043,17 @@ class H(http.server.BaseHTTPRequestHandler):
             return self._fail("bad request", "3")
         try:
             total = max(200, min(5000, int(c.get("steps", 1600))))
+            rank = max(8, min(128, int(c.get("rank", 64))))
+            base, _, _ = run_paths()
+            try:
+                rconf = json.load(open(os.path.join(base, "config.json")))
+            except Exception:
+                rconf = {}
+            if init != "fresh" and "last_rank" in rconf and rconf["last_rank"] != rank:
+                raise ValueError(f"rank changed ({rconf['last_rank']}→{rank}) — resume needs same rank, or start fresh")
+            rconf["last_rank"] = rank
+            os.makedirs(base, exist_ok=True)
+            json.dump(rconf, open(os.path.join(base, "config.json"), "w"))
             init = str(c.get("init", "fresh"))
             name = active_run()
             ckd = os.path.join("/workspace/tok/full", name)
@@ -1069,7 +1081,7 @@ class H(http.server.BaseHTTPRequestHandler):
                    CK_FROM="600", CK_EVERY="200", START_STEP=str(start))
         log = open("/workspace/ar_train.log", "a")
         subprocess.Popen(["/workspace/yue2venv/bin/python", "-u", train_py, name,
-                          str(total - start), "64", "0.5", initpt, "1e-4", "0.08"],
+                          str(total - start), str(rank), "0.5", initpt, "1e-4", "0.08"],
                          stdout=log, stderr=subprocess.STDOUT, stdin=subprocess.DEVNULL,
                          start_new_session=True, env=env)
         return self._ok({"ok": True, "run": name, "msg": f"training {name} {start}→{total}"}, "3")
