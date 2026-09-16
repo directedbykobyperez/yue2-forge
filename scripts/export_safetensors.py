@@ -56,12 +56,20 @@ def from_dict(td):
     return {"lora": lora, "cursor_head": cur}
 
 
-def convert_one(src, dst=None, force=False):
-    dst = dst or os.path.splitext(src)[0] + ".safetensors"
+def convert_one(src, dst=None, force=False, use_ema=False):
+    dst = dst or os.path.splitext(src)[0] + (".ema" if use_ema else "") + ".safetensors"
     if os.path.exists(dst) and not force:
         print(f"skip (exists): {dst}")
         return dst
     ck = torch.load(src, map_location="cpu", weights_only=False)
+    if use_ema:
+        if "ema" not in ck:
+            raise ValueError(f"{src} has no EMA weights (train with EMA build)")
+        n = len(ck["lora"])
+        names = list(ck.get("cursor_head", {"weight": None}).keys())
+        cur = {k: ck["ema"][n + i] for i, k in enumerate(names) if n + i < len(ck["ema"])}
+        ck = {"lora": ck["ema"][:n], "cursor_head": cur,
+              "rank": ck.get("rank", "?"), "targets": ck.get("targets", "")}
     td, meta = to_dict(ck, source=os.path.basename(src))
     save_file(td, dst, metadata=meta)
     print(f"wrote {dst} ({len(td)} tensors, {os.path.getsize(dst)/2**20:.1f} MB)")

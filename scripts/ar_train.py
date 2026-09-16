@@ -25,11 +25,18 @@ if INIT!="none":
     ck=torch.load(INIT,map_location=dev)
     with torch.no_grad(): [p.copy_(v.to(dev)) for p,v in zip(lora,ck["lora"])]
     RESTORE_CH=ck.get("cursor_head")
+    RESTORE_EMA=ck.get("ema")
     print("init from", INIT, flush=True)
 print(f"AR LoRA params {sum(p.numel() for p in lora)/1e6:.1f}M lr {LR}", flush=True)
 cursor_head=nn.Linear(model.config.hidden_size,model.config.hidden_size,bias=False).to(dev); nn.init.eye_(cursor_head.weight)
 if "RESTORE_CH" in dir() and RESTORE_CH is not None: cursor_head.load_state_dict({k: v.to(dev) for k,v in RESTORE_CH.items()}); print("cursor_head restored", flush=True)
 opt=torch.optim.AdamW([{"params":lora,"lr":LR,"weight_decay":0.0},{"params":cursor_head.parameters(),"lr":LR,"weight_decay":0.0}],betas=(0.9,0.95))
+EMA_DECAY=float(os.environ.get("EMA_DECAY", "0.99"))
+ema_params=[p.detach().clone() for p in lora + list(cursor_head.parameters())]
+if "RESTORE_EMA" in dir() and RESTORE_EMA is not None:
+    with torch.no_grad():
+        [e.copy_(v.to(dev)) for e, v in zip(ema_params, RESTORE_EMA)]
+    print("ema restored", flush=True)
 tok=YuE2TextTokenizer(snap+"/qwen.tiktoken"); RP="/workspace/real/prep"
 def cursor_targets(item):
     """-> (j0, j1, targ [F,ntok] sparse as (frame->token list)) for an artist item, or None."""
@@ -76,7 +83,7 @@ def evaluate():
         r[tag]=tot/len(items)
     return r
 e=evaluate(); print(f"EVAL step 0 minted_val {e['minted_val']:.3f} artist {e['artist']:.3f}", flush=True); log=open(f"{OUT}/train.log","a"); log.write(str(e)+"\n"); t0=time.time(); best=e["artist"]
-def save(path): torch.save({"lora":[p.detach().cpu() for p in lora],"rank":RANK,"targets":"ar self_attn qkvo + mlp gate/up/down","cursor_head":cursor_head.state_dict()}, path)
+def save(path): torch.save({"lora":[p.detach().cpu() for p in lora],"rank":RANK,"targets":"ar self_attn qkvo + mlp gate/up/down","cursor_head":cursor_head.state_dict(),"ema":[p.detach().cpu() for p in ema_params]}, path)
 START=int(os.environ.get("START_STEP","0"))
 for st in range(START+1,START+STEPS+1):
     for g in opt.param_groups: g["lr"]=LR*min(1,st/50)*(0.2+0.8*0.5*(1+math.cos(math.pi*min(st,SCHED)/SCHED)))
@@ -88,6 +95,9 @@ for st in range(START+1,START+STEPS+1):
             cur=CUR_CACHE[it["name"]]
         lm,cl=lm_loss(ids,Lp,cur=cur); loss=(lm+(CUR_W*cl if cl is not None else 0))/ACC; loss.backward(); last_cl=float(cl) if cl is not None else float("nan")
     torch.nn.utils.clip_grad_norm_(lora+list(cursor_head.parameters()),1.0); opt.step(); opt.zero_grad(set_to_none=True)
+    with torch.no_grad():
+        for e_, p_ in zip(ema_params, lora + list(cursor_head.parameters())):
+            e_.mul_(EMA_DECAY).add_(p_.detach(), alpha=1 - EMA_DECAY)
     if st<=3 or st%20==0: print(f"step {st} loss {loss.item()*ACC:.3f} cursor {last_cl:.3f} len {ids.shape[1]} {time.time()-t0:.0f}s mem {torch.cuda.max_memory_allocated()/2**30:.1f}G", flush=True)
     if st%100==0 or st==STEPS:
         e=evaluate(); msg=f"EVAL step {st} minted_val {e['minted_val']:.3f} artist {e['artist']:.3f} {time.time()-t0:.0f}s"; print(msg, flush=True); log.write(msg+"\n"); log.flush()
