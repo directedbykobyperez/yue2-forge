@@ -85,10 +85,15 @@ pre{background:#000;padding:10px;border-radius:8px;overflow:auto;max-height:220p
 <!--ENDPANE4-->
 <script>
 let songsDirty=false;
-document.addEventListener('click',function(e){if(e.target.classList.contains('play'))togglePlay(e.target.dataset.k,e.target.dataset.file,e.target);});
-function pToggle(i){document.getElementById('pc'+i).classList.toggle('collapsed');}
-function pDel(e,i){e.stopPropagation();const c=document.getElementById('pc'+i);c.querySelector("[name='style_"+i+"']").value='';c.querySelector("[name='lyrics_"+i+"']").value='';c.querySelector("[name='seed_"+i+"']").value='12';c.classList.add('collapsed');}
-function pAdd(){for(let i=0;i<4;i++){const c=document.getElementById('pc'+i);if(c.classList.contains('collapsed')){c.classList.remove('collapsed');c.querySelector("[name='style_"+i+"']").focus();return;}}}
+document.addEventListener('click',function(e){
+var t=e.target;
+if(t.classList.contains('play')){togglePlay(t.dataset.k,t.dataset.file,t);return;}
+var a=t.closest('[data-action]');if(!a)return;
+var act=a.dataset.action,i=parseInt(a.dataset.idx);
+if(act==='toggle'){document.getElementById('pc'+i).classList.toggle('collapsed');}
+else if(act==='del'){var c=document.getElementById('pc'+i);c.querySelector("[name='style_"+i+"']").value='';c.querySelector("[name='lyrics_"+i+"']").value='';c.querySelector("[name='seed_"+i+"']").value='12';c.classList.add('collapsed');}
+else if(act==='add'){for(var j=0;j<4;j++){var c=document.getElementById('pc'+j);if(c.classList.contains('collapsed')){c.classList.remove('collapsed');c.querySelector("[name='style_"+j+"']").focus();return;}}}
+});
 
 
 
@@ -660,7 +665,7 @@ class H(http.server.BaseHTTPRequestHandler):
                 sw = "" if act else f"<form method='POST' action='/switch_run' style='display:inline'><input type='hidden' name='name' value='{x['name']}'><button>Switch</button></form>"
                 rs += f"<div class='ckpt'><b>{x['name']}</b>{' (active)' if act else ''} <span class='muted'>{x['ready']}/{x['total']} songs" + (f" | ckpts {','.join(map(str, x['ckpts']))}" if x["ckpts"] else "") + "</span> " + sw + f" <a href='/confirm_delete?run={x['name']}' style='color:#f87171;text-decoration:none;font-size:18px' title='delete run'>✕</a><br><form method='POST' action='/set_trigger'>trigger: <input name='trigger' value='{_h.escape(x['trigger'], quote=True)}' placeholder='empty = caption-only' style='width:160px;background:#000;color:#eee;border:1px solid #444;border-radius:6px;padding:8px'><input type='hidden' name='run' value='{x['name']}'> caption: <select name='template'><option value='full'{(' selected' if x['template'] != 'short' else '')}>trigger, in the style of…</option><option value='short'{(' selected' if x['template'] == 'short' else '')}>trigger, caption</option></select> <button>Save</button></form></div>"
             pp = f"<div class='muted'>prep: {d['prep'].get('stage', 'idle')} — {d['prep'].get('detail', '')}</div>"
-            pc = "<div class='ptools'><span class='muted'>up to 4 — one render each per checkpoint</span><button type='button' class='padd' onclick='pAdd()'>+ Add prompt</button></div>"
+            pc = "<div class='ptools'><span class='muted'>up to 4 — one render each per checkpoint</span><button type='button' class='padd' data-action='add'>+ Add prompt</button></div>"
             plist = d["cfg"].get("prompts", [])
             while len(plist) < 4:
                 plist = plist + [{"style": "", "lyrics": "", "seed": 12}]
@@ -670,8 +675,8 @@ class H(http.server.BaseHTTPRequestHandler):
                 sd = p.get("seed", 12)
                 filled = bool(st.strip() or ly.strip())
                 cls = "pcard" if filled else "pcard collapsed"
-                pc += (f"<div class='{cls}' id='pc{i}'><div class='phead' onclick='pToggle({i})'><b>prompt {i + 1}</b>"
-                       f"<button type='button' class='x' onclick='pDel(event,{i})' title='delete prompt'>&#10005;</button></div>"
+                pc += (f"<div class='{cls}' id='pc{i}'><div class='phead' data-action='toggle' data-idx='{i}'><b>prompt {i + 1}</b>"
+                       f"<button type='button' class='x' data-action='del' data-idx='{i}' title='delete prompt'>&#10005;</button></div>"
                        f"<div class='pbody'><div class='plabel'>Style / caption</div>"
                        f"<input name='style_{i}' value='{_h.escape(st, quote=True)}'>"
                        f"<div class='plabel'>Lyrics</div>"
