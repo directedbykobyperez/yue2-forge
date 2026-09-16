@@ -45,7 +45,7 @@ pre{background:#000;padding:10px;border-radius:8px;overflow:auto;max-height:220p
 </div>
 <div id="pane2" class="pane" style="display:none"><h3>Dataset studio <span class="muted" id="ds_run"></span></h3>
 <div class="ckpt"><span class="muted" id="ds_count"></span></div>
-<form method="POST" action="/upload_audio" enctype="multipart/form-data"><div class="ckpt">songs + lyrics files — pick many at once. audio (wav/flac/ogg/mp3/m4a/webm) converts to flac; a matching <b>songname.txt</b> auto-fills that song's lyrics<br><input type="file" name="audio" multiple accept="audio/*,.wav,.flac,.ogg,.mp3,.m4a,.webm,.txt"> <button style="padding:8px 16px;border-radius:6px;border:0;background:#7c3aed;color:#fff">Upload</button></div></form>
+<form method="POST" action="/upload_audio" enctype="multipart/form-data"><div class="ckpt">Upload audio (WAV/FLAC/OGG/MP3/M4A/WebM) + matching songname.txt files to auto-fill lyrics.<br><input type="file" name="audio" multiple accept="audio/*,.wav,.flac,.ogg,.mp3,.m4a,.webm,.txt"> <button style="padding:8px 16px;border-radius:6px;border:0;background:#7c3aed;color:#fff">Upload</button></div></form>
 <div id="songs"></div><!--STATIC_SONGS-->
 </div>
 <div id="pane3" class="pane" style="display:none"><!--STATIC_STATUS-->
