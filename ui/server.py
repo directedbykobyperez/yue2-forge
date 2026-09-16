@@ -688,8 +688,6 @@ class H(http.server.BaseHTTPRequestHandler):
             g = d["gpu"]
             gp = (f"<b>{_h.escape(g.get('name', 'GPU'))}</b><br>🌡 {g.get('temp', '-')} · load {g.get('load', '-')} · {g.get('mem', '-')} ({g.get('mempct', 0)}%) · {g.get('pwr', '-')}" if g else "<span class='muted'>no GPU visible</span>")
             b = HTML.replace("<!--STATIC_STATUS-->", st).replace("<!--STATIC_SAMPLES-->", ss or "<div class='muted'>no samples yet</div>").replace("<!--STATIC_FILES-->", ff).replace("FILLPCT", str(d["pct"])).replace("<!--STATIC_SONGS-->", sg or "<div class='muted'>no songs yet</div>").replace("<!--STATIC_RUNS-->", rs or "<div class='muted'>no runs yet</div>").replace("<!--STATIC_PREP-->", pp).replace("<!--STATIC_GPU-->", gp).replace("<!--LOSSGRAPH-->", d["loss_svg"] or "<div class='muted'>no training data yet</div>").replace("<!--STATIC_PROMPTS-->", pc)
-            b = b.replace('class="tabradio" checked', 'class="tabradio"')
-            b = b.replace(f'id="t{tab}" class="tabradio"', f'id="t{tab}" class="tabradio" checked')
             b = b.replace("<!--MSG-->", f"<div class='ckpt' style='border-color:#7c3aed'>{_h.escape(msg)}</div>" if msg else "")
             b = b.replace("<!--STATIC_PHASE-->", f"<span class='pill'><span class='dot'></span>{_h.escape(str(d['phase']))} · {d['step_est']}/{TOTAL}</span>")
             b = b.replace('<b id="step">-</b>', f"<b id=\"step\">{d['step_est']}</b>").replace('<b id="phase">-</b>', f"<b id=\"phase\">{d['phase']}</b>").replace('<b id="loss">-</b>', f"<b id=\"loss\">{d['loss']}</b>").replace('<b id="eval">-</b>', f"<b id=\"eval\">{d['artist_eval']}</b>").replace('<b id="mval">-</b>', f"<b id=\"mval\">{d['minted_eval']}</b>")
