@@ -34,8 +34,9 @@ HTML = """<!DOCTYPE html><html><head><meta charset="utf-8">
 .seek{width:60%;vertical-align:middle;accent-color:#22d3ee}
 .dl{color:#22d3ee;text-decoration:none;font-size:14px}
 pre{background:#000;padding:10px;border-radius:8px;overflow:auto;max-height:220px;font-size:12px}.tabs{display:flex;gap:8px;margin:12px 0;position:sticky;top:0;background:#111;padding:8px 0;z-index:5}.tab{flex:1;padding:12px;border-radius:8px;border:1px solid #444;background:#1c1c1c;color:#eee;font-size:15px;text-align:center;cursor:pointer;text-decoration:none;display:block}.tab.on{background:#7c3aed;border-color:#7c3aed}
-@media(max-width:640px){body{padding:12px}input,textarea,select{max-width:100%!important;box-sizing:border-box}button{margin:6px 4px 6px 0}.grid{grid-template-columns:1fr 1fr}.tab{font-size:13px;padding:10px 4px}}.pill{display:inline-flex;align-items:center;gap:7px;font-size:12px;color:#888;background:#1c1c1c;border:1px solid #333;border-radius:20px;padding:6px 12px}.dot{width:8px;height:8px;border-radius:50%;background:#22c55e}</style></head>
-<body><h2>&#127926; FORGETITLE</h2>
+@media(max-width:640px){body{padding:12px}input,textarea,select{max-width:100%!important;box-sizing:border-box}button{margin:6px 4px 6px 0}.grid{grid-template-columns:1fr 1fr}.tab{font-size:13px;padding:10px 4px}}.hdr{display:flex;justify-content:space-between;align-items:flex-start;gap:12px;flex-wrap:wrap}.hdr h2{margin:0 0 8px}#gpu{text-align:right;font-size:12px;color:#888;line-height:1.6}#gpu b{color:#ccc}.pill{display:inline-flex;align-items:center;gap:7px;font-size:12px;color:#888;background:#1c1c1c;border:1px solid #333;border-radius:20px;padding:6px 12px}.dot{width:8px;height:8px;border-radius:50%;background:#22c55e}</style></head>
+<body><div class="hdr"><h2>&#127926; FORGETITLE</h2><div id="gpu">
+<!--STATIC_GPU--></div></div>
 <!--MSG-->
 <div class="tabs"><a class="tabTAB1ON" href="/?tab=1">1 · Runs</a><a class="tabTAB2ON" href="/?tab=2">2 · Dataset studio</a><a class="tabTAB3ON" href="/?tab=3">3 · Training</a><a class="tabTAB4ON" href="/?tab=4">4 · Logs</a></div>
 <!--REFRESH-->
@@ -77,7 +78,6 @@ pre{background:#000;padding:10px;border-radius:8px;overflow:auto;max-height:220p
 <div id="ckpts"></div>
 <h3>Downloads</h3><!--STATIC_FILES--><div id="dl"></div>
 
-<!--STATIC_GPU-->
 
 <div class="muted">V1</div>
 </div>
@@ -664,7 +664,7 @@ class H(http.server.BaseHTTPRequestHandler):
             for i, p in enumerate(plist[:4]):
                 pc += f"<div class='ckpt'><b>prompt {i + 1}</b><br>Style<br><input name='style_{i}' value='{_h.escape(p['style'], quote=True)}' style='width:100%;background:#000;color:#eee;border:1px solid #444;border-radius:6px;padding:8px'><br><br>Lyrics<br><textarea name='lyrics_{i}' rows='6' style='width:100%;background:#000;color:#eee;border:1px solid #444;border-radius:6px;padding:8px'>{_h.escape(p['lyrics'], quote=False)}</textarea><br><br>Seed <input name='seed_{i}' value='{p['seed']}' type='number' style='width:100px;background:#000;color:#eee;border:1px solid #444;border-radius:6px;padding:8px'></div>"
             g = d["gpu"]
-            gp = (f"<div class='ckpt'><b>{_h.escape(g.get('name', 'GPU'))}</b><br><span class='muted'>🌡 {g.get('temp', '-')} · load {g.get('load', '-')} · {g.get('mem', '-')} ({g.get('mempct', 0)}%) · {g.get('pwr', '-')}</span></div>" if g else "<div class='muted'>no GPU visible</div>")
+            gp = (f"<b>{_h.escape(g.get('name', 'GPU'))}</b><br>🌡 {g.get('temp', '-')} · load {g.get('load', '-')} · {g.get('mem', '-')} ({g.get('mempct', 0)}%) · {g.get('pwr', '-')}" if g else "<span class='muted'>no GPU visible</span>")
             b = HTML.replace("<!--STATIC_STATUS-->", st).replace("<!--STATIC_SAMPLES-->", ss or "<div class='muted'>no samples yet</div>").replace("<!--STATIC_FILES-->", ff).replace("FILLPCT", str(d["pct"])).replace("<!--STATIC_SONGS-->", sg or "<div class='muted'>no songs yet</div>").replace("<!--STATIC_RUNS-->", rs or "<div class='muted'>no runs yet</div>").replace("<!--STATIC_PREP-->", pp).replace("<!--STATIC_GPU-->", gp).replace("<!--LOSSGRAPH-->", d["loss_svg"] or "<div class='muted'>no training data yet</div>").replace("<!--STATIC_PROMPTS-->", pc)
             b = b.replace('class="tabradio" checked', 'class="tabradio"')
             b = b.replace(f'id="t{tab}" class="tabradio"', f'id="t{tab}" class="tabradio" checked')
