@@ -33,12 +33,12 @@ HTML = """<!DOCTYPE html><html><head><meta charset="utf-8">
 .play{width:52px;height:52px;border-radius:50%;border:0;background:linear-gradient(135deg,#7c3aed,#22d3ee);color:#fff;font-size:20px;margin:6px 8px 6px 0;vertical-align:middle}
 .seek{width:60%;vertical-align:middle;accent-color:#22d3ee}
 .dl{color:#22d3ee;text-decoration:none;font-size:14px}
-pre{background:#000;padding:10px;border-radius:8px;overflow:auto;max-height:220px;font-size:12px}.tabs{display:flex;gap:8px;margin:12px 0;position:sticky;top:0;background:#111;padding:8px 0;z-index:5}.tab{flex:1;padding:12px;border-radius:8px;border:1px solid #444;background:#1c1c1c;color:#eee;font-size:15px;text-align:center;cursor:pointer}.tab.on{background:#7c3aed;border-color:#7c3aed}.tabradio{position:absolute;opacity:0;pointer-events:none}#pane1,#pane2,#pane3{display:none}#t1:checked~#pane1,#t2:checked~#pane2,#t3:checked~#pane3{display:block}#t1:checked~.tabs label[for="t1"],#t2:checked~.tabs label[for="t2"],#t3:checked~.tabs label[for="t3"]{background:#7c3aed;border-color:#7c3aed}
+pre{background:#000;padding:10px;border-radius:8px;overflow:auto;max-height:220px;font-size:12px}.tabs{display:flex;gap:8px;margin:12px 0;position:sticky;top:0;background:#111;padding:8px 0;z-index:5}.tab{flex:1;padding:12px;border-radius:8px;border:1px solid #444;background:#1c1c1c;color:#eee;font-size:15px;text-align:center;cursor:pointer}.tab.on{background:#7c3aed;border-color:#7c3aed}.tabradio{position:absolute;opacity:0;pointer-events:none}#pane1,#pane2,#pane3,#pane4{display:none}#t1:checked~#pane1,#t2:checked~#pane2,#t3:checked~#pane3,#t4:checked~#pane4{display:block}#t1:checked~.tabs label[for="t1"],#t2:checked~.tabs label[for="t2"],#t3:checked~.tabs label[for="t3"]{background:#7c3aed;border-color:#7c3aed}#t4:checked~.tabs label[for="t4"]{background:#7c3aed;border-color:#7c3aed}
 @media(max-width:640px){body{padding:12px}input,textarea,select{max-width:100%!important;box-sizing:border-box}button{margin:6px 4px 6px 0}.grid{grid-template-columns:1fr 1fr}.tab{font-size:13px;padding:10px 4px}}.pill{display:inline-flex;align-items:center;gap:7px;font-size:12px;color:#888;background:#1c1c1c;border:1px solid #333;border-radius:20px;padding:6px 12px}.dot{width:8px;height:8px;border-radius:50%;background:#22c55e}</style></head>
 <body><h2>&#127926; FORGETITLE</h2>
 <!--MSG-->
-<input type="radio" name="ftab" id="t1" class="tabradio" checked><input type="radio" name="ftab" id="t2" class="tabradio"><input type="radio" name="ftab" id="t3" class="tabradio">
-<div class="tabs"><label for="t1" id="tb1" class="tab on" onclick="tab(1)">1 · Runs</label><label for="t2" id="tb2" class="tab" onclick="tab(2)">2 · Dataset studio</label><label for="t3" id="tb3" class="tab" onclick="tab(3)">3 · Training</label></div>
+<input type="radio" name="ftab" id="t1" class="tabradio" checked><input type="radio" name="ftab" id="t2" class="tabradio"><input type="radio" name="ftab" id="t3" class="tabradio"><input type="radio" name="ftab" id="t4" class="tabradio">
+<div class="tabs"><label for="t1" id="tb1" class="tab on" onclick="tab(1)">1 · Runs</label><label for="t2" id="tb2" class="tab" onclick="tab(2)">2 · Dataset studio</label><label for="t3" id="tb3" class="tab" onclick="tab(3)">3 · Training</label><label for="t4" id="tb4" class="tab" onclick="tab(4)">4 · Logs</label></div>
 <!--REFRESH-->
 <div id="pane1"><h3>Runs</h3>
 <div id="runs"></div><!--STATIC_RUNS-->
@@ -79,8 +79,10 @@ pre{background:#000;padding:10px;border-radius:8px;overflow:auto;max-height:220p
 <h3>Downloads</h3><!--STATIC_FILES--><div id="dl"></div>
 
 <!--STATIC_GPU-->
-<h3>Log tail</h3><pre id="log">STATICLOG</pre>
+
 <div class="muted">V1</div>
+</div>
+<div id="pane4"><h3>Log tail</h3><pre id="log">STATICLOG</pre>
 </div>
 <script>
 let songsDirty=false;
@@ -110,7 +112,7 @@ a.onended=()=>{btn.textContent='\u25B6';};
 seek.oninput=()=>{a.currentTime=seek.value;};
 players[key]={audio:a};btn.textContent='\u23F8';a.play();
 }catch(e){btn.textContent='\u25B6';document.getElementById('t'+key).textContent='load failed, retry';}}
-function tab(n){for(let i=1;i<=3;i++){document.getElementById('pane'+i).style.display=i===n?'block':'none';document.getElementById('tb'+i).className='tab'+(i===n?' on':'');}}
+function tab(n){for(let i=1;i<=4;i++){document.getElementById('pane'+i).style.display=i===n?'block':'none';document.getElementById('tb'+i).className='tab'+(i===n?' on':'');}}
 let lastSig='';
 
 async function tick(){try{const r=await fetch('/api',{cache:'no-store'});if(!r.ok)throw new Error('http '+r.status);const d=await r.json();
@@ -623,7 +625,7 @@ class H(http.server.BaseHTTPRequestHandler):
             q = self.path.split("?", 1)[1] if "?" in self.path else ""
             qq = _uq.parse_qs(q)
             tab = qq.get("tab", ["1"])[0]
-            tab = tab if tab in ("1", "2", "3") else "1"
+            tab = tab if tab in ("1", "2", "3", "4") else "1"
             msg = qq.get("msg", [""])[0][:200]
             d = snapshot()
             st = f"<div class='muted'>SERVER { _t.strftime('%H:%M:%S') } · run {active_run()}: step {d['step']}/{TOTAL} ({d['pct']}%) | {d['phase']} | loss {d['loss']} | artist {d['artist_eval']} | minted {d['minted_eval']}</div>"
