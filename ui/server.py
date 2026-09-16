@@ -23,46 +23,68 @@ DL = {
 HTML = """<!DOCTYPE html><html><head><meta charset="utf-8">
 <meta name="viewport" content="width=device-width,initial-scale=1">
 <title>FORGETITLE</title>
-<style>body{background:#111;color:#eee;font-family:system-ui,sans-serif;max-width:760px;margin:0 auto;padding:20px}
-.bar{height:26px;background:#333;border-radius:13px;overflow:hidden;margin:10px 0}
-.fill{height:100%;background:linear-gradient(90deg,#7c3aed,#22d3ee);width:0%}
+<style>body{background:#0D0D0D;color:#FFFFFF;font-family:system-ui,-apple-system,sans-serif;margin:0;padding:0}
+.layout{display:flex;min-height:100vh}
+.side{width:230px;flex-shrink:0;background:#121212;border-right:1px solid #2C2C2C;padding:20px 14px;display:flex;flex-direction:column;gap:6px;position:sticky;top:0;height:100vh;box-sizing:border-box}
+.brand{display:flex;align-items:center;gap:10px;padding:4px 8px 16px;font-weight:800;font-size:17px;letter-spacing:.02em}
+.brand img{width:34px;height:34px;border-radius:8px}
+.nav{display:flex;flex-direction:column;gap:6px}
+.nav label{display:block;padding:11px 14px;border-radius:8px;color:#A0A0A0;font-size:14px;font-weight:600;cursor:pointer;border:1px solid transparent}
+.nav label:hover{background:#1E1E1E;color:#fff}
+.side-foot{margin-top:auto;display:flex;flex-direction:column;gap:10px}
+.cta{display:block;text-align:center;padding:12px;border-radius:8px;background:#E50914;color:#fff;font-weight:700;text-decoration:none;font-size:14px}
+.cta:hover{background:#FF3B30}
+.pill{display:inline-flex;align-items:center;gap:7px;font-size:12px;color:#A0A0A0;background:#1E1E1E;border:1px solid #2C2C2C;border-radius:20px;padding:6px 12px}
+.dot{width:8px;height:8px;border-radius:50%;background:#22c55e}
+main{flex:1;min-width:0;padding:24px 28px;max-width:860px}
+.right{width:290px;flex-shrink:0;padding:24px 20px 24px 0;display:flex;flex-direction:column;gap:12px}
+h2{font-size:24px;margin:0 0 4px;letter-spacing:.01em}
+h3{font-size:12px;text-transform:uppercase;letter-spacing:.14em;color:#A0A0A0;margin:22px 0 10px}
+.bar{height:10px;background:#1E1E1E;border:1px solid #2C2C2C;border-radius:6px;overflow:hidden;margin:10px 0}
+.fill{height:100%;background:linear-gradient(90deg,#E50914,#FF3B30);width:0%}
 .grid{display:grid;grid-template-columns:1fr 1fr;gap:8px;margin:12px 0}
-.card{background:#1c1c1c;border-radius:8px;padding:10px}.card b{font-size:20px}
-.ckpt{background:#1c1c1c;border-radius:8px;padding:10px;margin:8px 0}
- audio{width:100%;margin-top:6px}.muted{color:#888;font-size:13px}
-.play{width:52px;height:52px;border-radius:50%;border:0;background:linear-gradient(135deg,#7c3aed,#22d3ee);color:#fff;font-size:20px;margin:6px 8px 6px 0;vertical-align:middle}
-.seek{width:60%;vertical-align:middle;accent-color:#22d3ee}
-.dl{color:#22d3ee;text-decoration:none;font-size:14px}
-pre{background:#000;padding:10px;border-radius:8px;overflow:auto;max-height:220px;font-size:12px}.tabs{display:flex;gap:8px;margin:12px 0;position:sticky;top:0;background:#111;padding:8px 0;z-index:5}.tab{flex:1;padding:12px;border-radius:8px;border:1px solid #444;background:#1c1c1c;color:#eee;font-size:15px;text-align:center;cursor:pointer}.tab.on{background:#7c3aed;border-color:#7c3aed}.tabradio{position:absolute;opacity:0;pointer-events:none}#pane1,#pane2,#pane3{display:none}#t1:checked~#pane1,#t2:checked~#pane2,#t3:checked~#pane3{display:block}#t1:checked~.tabs label[for="t1"],#t2:checked~.tabs label[for="t2"],#t3:checked~.tabs label[for="t3"]{background:#7c3aed;border-color:#7c3aed}
-@media(max-width:640px){body{padding:12px}input,textarea,select{max-width:100%!important;box-sizing:border-box}button{margin:6px 4px 6px 0}.grid{grid-template-columns:1fr 1fr}.tab{font-size:13px;padding:10px 4px}}</style></head>
-<body><h2>&#127926; FORGETITLE</h2>
-<!--MSG-->
+.card{background:#1E1E1E;border:1px solid #2C2C2C;border-radius:10px;padding:12px}.card b{font-size:20px;color:#fff}.card{color:#A0A0A0;font-size:12px}
+.ckpt{background:#1E1E1E;border:1px solid #2C2C2C;border-radius:10px;padding:12px;margin:8px 0}
+audio{width:100%;margin-top:6px}.muted{color:#A0A0A0;font-size:13px}
+.play{width:52px;height:52px;border-radius:50%;border:0;background:#E50914;color:#fff;font-size:20px;margin:6px 8px 6px 0;vertical-align:middle}
+.seek{width:60%;vertical-align:middle;accent-color:#E50914}
+.dl{color:#FF6B60;text-decoration:none;font-size:14px}
+pre{background:#000;border:1px solid #2C2C2C;padding:10px;border-radius:8px;overflow:auto;max-height:220px;font-size:12px}
+button{font-size:14px}
+input,textarea,select{font-size:14px}
+.tabradio{position:absolute;opacity:0;pointer-events:none}#pane1,#pane2,#pane3{display:none}#t1:checked~.layout #pane1,#t2:checked~.layout #pane2,#t3:checked~.layout #pane3{display:block}#t1:checked~.layout label[for="t1"],#t2:checked~.layout label[for="t2"],#t3:checked~.layout label[for="t3"]{background:#1E1E1E;color:#fff;border-color:#2C2C2C}#t1:checked~.layout label[for="t1"]::before,#t2:checked~.layout label[for="t2"]::before,#t3:checked~.layout label[for="t3"]::before{content:"";display:inline-block;width:8px;height:8px;border-radius:50%;background:#FF3B30;margin-right:9px}
+@media(max-width:900px){.layout{flex-direction:column}.side{width:auto;height:auto;position:static;border-right:0;border-bottom:1px solid #2C2C2C}.nav{flex-direction:row}.nav label{flex:1;text-align:center;font-size:13px;padding:10px 4px}.right{width:auto;padding:0 16px 20px}main{padding:16px}}@media(max-width:640px){input,textarea,select{max-width:100%!important;box-sizing:border-box}button{margin:6px 4px 6px 0}.grid{grid-template-columns:1fr 1fr}}</style></head>
+<body>
 <input type="radio" name="ftab" id="t1" class="tabradio" checked><input type="radio" name="ftab" id="t2" class="tabradio"><input type="radio" name="ftab" id="t3" class="tabradio">
-<div class="tabs"><label for="t1" id="tb1" class="tab" onclick="tab(1)">1 · Runs</label><label for="t2" id="tb2" class="tab" onclick="tab(2)">2 · Dataset studio</label><label for="t3" id="tb3" class="tab" onclick="tab(3)">3 · Training</label></div>
+<div class="layout"><aside class="side">
+<div class="brand"><img src="/assets/logo.png" alt="logo">yue2-forge</div>
+<div class="nav">
+<label for="t1" id="tb1" class="tab" onclick="tab(1)">Runs</label><label for="t2" id="tb2" class="tab" onclick="tab(2)">Dataset studio</label><label for="t3" id="tb3" class="tab" onclick="tab(3)">Training</label>
+</div>
+<div class="side-foot">
+<!--STATIC_PHASE-->
+<a class="cta" href="/?tab=3">Start training &rarr;</a>
+<div><span class="pill"><span class="dot"></span>V1</span></div>
+</div>
+</aside><main>
+<h2>FORGETITLE</h2>
+<!--MSG-->
 <!--REFRESH-->
 <div id="pane1"><h3>Runs</h3>
 <div id="runs"></div><!--STATIC_RUNS-->
-<form method="POST" action="/create_run"><div class="ckpt">new: <input name="name" placeholder="artist_name" style="width:180px;background:#000;color:#eee;border:1px solid #444;border-radius:6px;padding:8px"> <button style="padding:8px 16px;border-radius:6px;border:0;background:#7c3aed;color:#fff">Create</button> <span class="muted">then set its trigger below</span></div></form>
+<form method="POST" action="/create_run"><div class="ckpt">new: <input name="name" placeholder="artist_name" style="width:180px;background:#000;color:#eee;border:1px solid #444;border-radius:6px;padding:8px"> <button style="padding:8px 16px;border-radius:6px;border:0;background:#E50914;color:#fff">Create</button> <span class="muted">then set its trigger below</span></div></form>
 </div>
 <div id="pane2"><h3>Dataset studio <span class="muted" id="ds_run"></span></h3>
 <div class="ckpt"><span class="muted" id="ds_count"></span></div>
-<form method="POST" action="/upload_audio" enctype="multipart/form-data"><div class="ckpt">songs + lyrics files — pick many at once. audio (wav/flac/ogg/mp3/m4a/webm) converts to flac; a matching <b>songname.txt</b> auto-fills that song's lyrics<br><input type="file" name="audio" multiple accept="audio/*,.wav,.flac,.ogg,.mp3,.m4a,.webm,.txt"> <button style="padding:8px 16px;border-radius:6px;border:0;background:#7c3aed;color:#fff">Upload</button></div></form>
+<form method="POST" action="/upload_audio" enctype="multipart/form-data"><div class="ckpt">songs + lyrics files — pick many at once. audio (wav/flac/ogg/mp3/m4a/webm) converts to flac; a matching <b>songname.txt</b> auto-fills that song's lyrics<br><input type="file" name="audio" multiple accept="audio/*,.wav,.flac,.ogg,.mp3,.m4a,.webm,.txt"> <button style="padding:8px 16px;border-radius:6px;border:0;background:#E50914;color:#fff">Upload</button></div></form>
 <div id="songs"></div><!--STATIC_SONGS-->
 </div>
 <div id="pane3"><!--STATIC_STATUS-->
 <div class="bar"><div class="fill" id="fill" style="width:FILLPCT%"></div></div>
 <div id="pct" class="muted"></div>
-<div class="grid">
-<div class="card">step<div><b id="step">-</b> / 1600</div></div>
-<div class="card">phase<div><b id="phase">-</b></div></div>
-<div class="card">loss<div><b id="loss">-</b></div></div>
-<div class="card">artist eval<div><b id="eval">-</b></div></div>
-<div class="card">minted_val eval<div><b id="mval">-</b></div></div>
-<div class="card">ETA<div><b id="eta">-</b></div></div>
 </div>
-<div class="ckpt">dataset prep — features + stems + tokens (10–40 min by dataset size, runs in background)<br><form method="POST" action="/prepare_dataset"><button style="padding:8px 16px;border-radius:6px;border:0;background:#f59e0b;color:#000">Prepare dataset</button></form> <span class="muted" id="prep_line"></span></div>
-<!--STATIC_PREP-->
-<form method="POST" action="/start_training"><div class="ckpt">training — active run only<br>from <select name="init" style="background:#000;color:#eee;border:1px solid #444;border-radius:6px;padding:8px"><option value="fresh">fresh</option><option value="last">last.pt</option><option value="best">best.pt</option></select> to step <input name="steps" type="number" value="1600" style="width:90px;background:#000;color:#eee;border:1px solid #444;border-radius:6px;padding:8px"> <button style="padding:8px 16px;border-radius:6px;border:0;background:#22c55e;color:#000">Start training</button><br><span class="muted">needs 7+ ready songs + dataset prepped (finish songs above, then prep via scripts/run_all.sh steps 1-3)</span></div></form>
+
+<form method="POST" action="/start_training"><div class="ckpt">training — active run only<br>from <select name="init" style="background:#000;color:#eee;border:1px solid #444;border-radius:6px;padding:8px"><option value="fresh">fresh</option><option value="last">last.pt</option><option value="best">best.pt</option></select> to step <input name="steps" type="number" value="1600" style="width:90px;background:#000;color:#eee;border:1px solid #444;border-radius:6px;padding:8px"> <button style="padding:8px 16px;border-radius:6px;border:0;background:#E50914;color:#fff">Start training</button><br><span class="muted">needs 7+ ready songs + dataset prepped (finish songs above, then prep via scripts/run_all.sh steps 1-3)</span></div></form>
 <h3>Samples (your custom prompt below)</h3>
 <!--STATIC_SAMPLES-->
 <div id="samples"></div>
@@ -72,12 +94,24 @@ pre{background:#000;padding:10px;border-radius:8px;overflow:auto;max-height:220p
 Style<br><input id="f_style" name="style" value="CFGSTYLE" style="width:100%;background:#000;color:#eee;border:1px solid #444;border-radius:6px;padding:8px"><br><br>
 Lyrics<br><textarea id="f_lyr" name="lyrics" rows="9" style="width:100%;background:#000;color:#eee;border:1px solid #444;border-radius:6px;padding:8px">CFGLYRICS</textarea><br><br>
 Seed <input id="f_seed" name="seed" value="CFGSEED" type="number" style="width:100px;background:#000;color:#eee;border:1px solid #444;border-radius:6px;padding:8px">
-<button style="padding:8px 16px;border-radius:6px;border:0;background:#7c3aed;color:#fff">Save</button></div></form>
+<button style="padding:8px 16px;border-radius:6px;border:0;background:#E50914;color:#fff">Save</button></div></form>
 <div id="ckpts"></div>
 <h3>Downloads</h3><!--STATIC_FILES--><div id="dl"></div>
+
+</div></main><aside class='right'><h3>Status</h3>
+<div class="grid">
+<div class="card">step<div><b id="step">-</b> / 1600</div></div>
+<div class="card">phase<div><b id="phase">-</b></div></div>
+<div class="card">loss<div><b id="loss">-</b></div></div>
+<div class="card">artist eval<div><b id="eval">-</b></div></div>
+<div class="card">minted_val eval<div><b id="mval">-</b></div></div>
+<div class="card">ETA<div><b id="eta">-</b></div></div>
+
+<div class="ckpt">dataset prep — features + stems + tokens (10–40 min by dataset size, runs in background)<br><form method="POST" action="/prepare_dataset"><button style="padding:8px 16px;border-radius:6px;border:0;background:#E50914;color:#fff">Prepare dataset</button></form> <span class="muted" id="prep_line"></span></div>
+<!--STATIC_PREP-->
 <h3>Log tail</h3><pre id="log">STATICLOG</pre>
 <div class="muted">V1</div>
-</div>
+</aside></div>
 <script>
 let dirty=false;for(const id of ['f_style','f_lyr','f_seed']){document.getElementById(id).addEventListener('input',()=>dirty=true);}
 let songsDirty=false;
@@ -478,6 +512,13 @@ class H(http.server.BaseHTTPRequestHandler):
             ctype = {"flac": "audio/flac", "wav": "audio/wav", "ogg": "audio/ogg",
                      "mp3": "audio/mpeg", "m4a": "audio/mp4", "webm": "audio/webm"}.get(os.path.splitext(fn)[1].lower()[1:], "audio/mpeg")
             self._send(p, ctype)
+        elif self.path.startswith("/assets/"):
+            fn = os.path.basename(self.path[8:])
+            if fn not in ("logo.png",):
+                self.send_error(404)
+                return
+            repo = os.environ.get("FORGE_REPO", "/workspace/yue2-forge")
+            self._send(os.path.join(repo, "assets", fn), "image/png")
         elif self.path.startswith("/m/"):
             fn = os.path.basename(self.path[3:])
             if ".." in fn or not re.match(r"[A-Za-z0-9_]+_s\d+\.(mp3|flac)$", fn):
@@ -545,7 +586,8 @@ class H(http.server.BaseHTTPRequestHandler):
             b = HTML.replace("<!--STATIC_STATUS-->", st).replace("<!--STATIC_SAMPLES-->", ss or "<div class='muted'>no samples yet</div>").replace("<!--STATIC_FILES-->", ff).replace("FILLPCT", str(d["pct"])).replace("<!--STATIC_SONGS-->", sg or "<div class='muted'>no songs yet</div>").replace("<!--STATIC_RUNS-->", rs or "<div class='muted'>no runs yet</div>").replace("<!--STATIC_PREP-->", pp)
             b = b.replace('class="tabradio" checked', 'class="tabradio"')
             b = b.replace(f'id="t{tab}" class="tabradio"', f'id="t{tab}" class="tabradio" checked')
-            b = b.replace("<!--MSG-->", f"<div class='ckpt' style='border-color:#7c3aed'>{_h.escape(msg)}</div>" if msg else "")
+            b = b.replace("<!--MSG-->", f"<div class='ckpt' style='border-color:#E50914'>{_h.escape(msg)}</div>" if msg else "")
+            b = b.replace("<!--STATIC_PHASE-->", f"<span class='pill'><span class='dot'></span>{_h.escape(str(d['phase']))} · {d['step_est']}/{TOTAL}</span>")
             b = b.replace("<!--REFRESH-->", f"<div style='text-align:right'><a class='dl' href='/?tab={tab}'>↻ Refresh numbers</a> <span class='muted'>(auto-refresh is blocked in your browser)</span></div>")
             b = b.replace('<b id="step">-</b>', f"<b id=\"step\">{d['step_est']}</b>").replace('<b id="phase">-</b>', f"<b id=\"phase\">{d['phase']}</b>").replace('<b id="loss">-</b>', f"<b id=\"loss\">{d['loss']}</b>").replace('<b id="eval">-</b>', f"<b id=\"eval\">{d['artist_eval']}</b>").replace('<b id="mval">-</b>', f"<b id=\"mval\">{d['minted_eval']}</b>")
             b = b.replace('<b id="eta">-</b>', f"<b id=\"eta\">{d['eta']}</b>")
