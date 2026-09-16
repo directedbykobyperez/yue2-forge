@@ -676,7 +676,7 @@ class H(http.server.BaseHTTPRequestHandler):
                 filled = bool(st.strip() or ly.strip())
                 cls = "pcard" if filled else "pcard collapsed"
                 pc += (f"<div class='{cls}' id='pc{i}'><div class='phead' data-action='toggle' data-idx='{i}'><b>prompt {i + 1}</b>"
-                       f"<button type='button' class='x' data-action='del' data-idx='{i}' title='delete prompt'>&#10005;</button></div>"
+                       f"<button type='button' class='x' data-action='del' data-idx='{i}' title='clear inputs'>clean</button></div>"
                        f"<div class='pbody'><div class='plabel'>Style / caption</div>"
                        f"<input name='style_{i}' value='{_h.escape(st, quote=True)}'>"
                        f"<div class='plabel'>Lyrics</div>"
