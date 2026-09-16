@@ -34,7 +34,7 @@ HTML = """<!DOCTYPE html><html><head><meta charset="utf-8">
 .seek{width:60%;vertical-align:middle;accent-color:#22d3ee}
 .dl{color:#22d3ee;text-decoration:none;font-size:14px}
 pre{background:#000;padding:10px;border-radius:8px;overflow:auto;max-height:220px;font-size:12px}.tabs{display:flex;gap:8px;margin:12px 0;position:sticky;top:0;background:#111;padding:8px 0;z-index:5}.tab{flex:1;padding:12px;border-radius:8px;border:1px solid #444;background:#1c1c1c;color:#eee;font-size:15px;text-align:center;cursor:pointer;text-decoration:none;display:block}.tab.on{background:#7c3aed;border-color:#7c3aed}
-@media(max-width:640px){body{padding:12px}input,textarea,select{max-width:100%!important;box-sizing:border-box}button{margin:6px 4px 6px 0}.grid{grid-template-columns:1fr 1fr}.tab{font-size:13px;padding:10px 4px}}.hdr{display:flex;justify-content:space-between;align-items:flex-start;gap:12px;flex-wrap:wrap}.hdr h2{margin:0 0 8px}#gpu{text-align:right;font-size:12px;color:#888;line-height:1.6}#gpu b{color:#ccc}.pill{display:inline-flex;align-items:center;gap:7px;font-size:12px;color:#888;background:#1c1c1c;border:1px solid #333;border-radius:20px;padding:6px 12px}.dot{width:8px;height:8px;border-radius:50%;background:#22c55e}</style></head>
+@media(max-width:640px){body{padding:12px}input,textarea,select{max-width:100%!important;box-sizing:border-box}button{margin:6px 4px 6px 0}.grid{grid-template-columns:1fr 1fr}.tab{font-size:13px;padding:10px 4px}}.hdr{display:flex;justify-content:space-between;align-items:flex-start;gap:12px;flex-wrap:wrap}.hdr h2{margin:0 0 8px}#gpu{text-align:right;font-size:12px;color:#888;line-height:1.6}#gpu b{color:#ccc}.pill{display:inline-flex;align-items:center;gap:7px;font-size:12px;color:#888;background:#1c1c1c;border:1px solid #333;border-radius:20px;padding:6px 12px}.dot{width:8px;height:8px;border-radius:50%;background:#22c55e}.ptools{display:flex;align-items:center;gap:10px;margin:8px 0}.ptools .padd{margin-left:auto;padding:6px 12px;border-radius:6px;border:1px solid #444;background:#1c1c1c;color:#ddd;font-size:13px;cursor:pointer}.ptools .padd:hover{background:#262626}.pcard{background:#161616;border:1px solid #2C2C2C;border-radius:10px;margin:8px 0;overflow:hidden}.pcard.collapsed .pbody{display:none}.phead{display:flex;align-items:center;gap:8px;padding:9px 12px;background:#1c1c1c;cursor:pointer;user-select:none}.phead b{font-size:13px;flex:1;margin:0}.pcard.collapsed .phead b::after{content:" — click to expand";color:#888;font-weight:400;font-size:12px}.phead .x{color:#f87171;font-size:16px;line-height:1;border:0;background:none;cursor:pointer;padding:2px 6px;border-radius:4px}.phead .x:hover{background:#3a1414}.pbody{padding:10px 12px 12px}.pbody input,.pbody textarea{width:100%;box-sizing:border-box;background:#000;color:#eee;border:1px solid #444;border-radius:6px;padding:8px;font-family:inherit}.pbody .seedbox{width:110px}.plabel{font-size:11px;text-transform:uppercase;letter-spacing:.1em;color:#888;margin:10px 0 4px}.plabel:first-child{margin-top:0}</style></head>
 <body><div class="hdr"><h2>&#127926; FORGETITLE</h2><div id="gpu">
 <!--STATIC_GPU--></div></div>
 <!--MSG-->
@@ -70,7 +70,7 @@ pre{background:#000;padding:10px;border-radius:8px;overflow:auto;max-height:220p
 <h3>Samples (your custom prompt below)</h3>
 <!--STATIC_SAMPLES-->
 <div id="samples"></div>
-<h3>Sample prompts <span class="muted">(up to 4 — one render each per checkpoint)</span></h3>
+<h3>Sample prompts</h3>
 <form method="POST" action="/save_cfg">
 <!--STATIC_PROMPTS-->
 <div class="ckpt"><label class="muted"><input type="checkbox" name="walk" value="1"WALKCHECKED> walk seed per checkpoint</label>
@@ -86,6 +86,9 @@ pre{background:#000;padding:10px;border-radius:8px;overflow:auto;max-height:220p
 <!--ENDPANE4-->
 <script>
 let songsDirty=false;
+function pToggle(i){document.getElementById('pc'+i).classList.toggle('collapsed');}
+function pDel(e,i){e.stopPropagation();const c=document.getElementById('pc'+i);c.querySelector("[name='style_"+i+"']").value='';c.querySelector("[name='lyrics_"+i+"']").value='';c.querySelector("[name='seed_"+i+"']").value='12';c.classList.add('collapsed');}
+function pAdd(){for(let i=0;i<4;i++){const c=document.getElementById('pc'+i);if(c.classList.contains('collapsed')){c.classList.remove('collapsed');c.querySelector("[name='style_"+i+"']").focus();return;}}}
 
 
 
@@ -657,12 +660,24 @@ class H(http.server.BaseHTTPRequestHandler):
                 sw = "" if act else f"<form method='POST' action='/switch_run' style='display:inline'><input type='hidden' name='name' value='{x['name']}'><button>Switch</button></form>"
                 rs += f"<div class='ckpt'><b>{x['name']}</b>{' (active)' if act else ''} <span class='muted'>{x['ready']}/{x['total']} songs" + (f" | ckpts {','.join(map(str, x['ckpts']))}" if x["ckpts"] else "") + "</span> " + sw + f" <a href='/confirm_delete?run={x['name']}' style='color:#f87171;text-decoration:none;font-size:18px' title='delete run'>✕</a><br><form method='POST' action='/set_trigger'>trigger: <input name='trigger' value='{_h.escape(x['trigger'], quote=True)}' placeholder='empty = caption-only' style='width:160px;background:#000;color:#eee;border:1px solid #444;border-radius:6px;padding:8px'><input type='hidden' name='run' value='{x['name']}'> caption: <select name='template'><option value='full'{(' selected' if x['template'] != 'short' else '')}>trigger, in the style of…</option><option value='short'{(' selected' if x['template'] == 'short' else '')}>trigger, caption</option></select> <button>Save</button></form></div>"
             pp = f"<div class='muted'>prep: {d['prep'].get('stage', 'idle')} — {d['prep'].get('detail', '')}</div>"
-            pc = ""
+            pc = "<div class='ptools'><span class='muted'>up to 4 — one render each per checkpoint</span><button type='button' class='padd' onclick='pAdd()'>+ Add prompt</button></div>"
             plist = d["cfg"].get("prompts", [])
             while len(plist) < 4:
                 plist = plist + [{"style": "", "lyrics": "", "seed": 12}]
             for i, p in enumerate(plist[:4]):
-                pc += f"<div class='ckpt'><b>prompt {i + 1}</b><br>Style<br><input name='style_{i}' value='{_h.escape(p['style'], quote=True)}' style='width:100%;background:#000;color:#eee;border:1px solid #444;border-radius:6px;padding:8px'><br><br>Lyrics<br><textarea name='lyrics_{i}' rows='6' style='width:100%;background:#000;color:#eee;border:1px solid #444;border-radius:6px;padding:8px'>{_h.escape(p['lyrics'], quote=False)}</textarea><br><br>Seed <input name='seed_{i}' value='{p['seed']}' type='number' style='width:100px;background:#000;color:#eee;border:1px solid #444;border-radius:6px;padding:8px'></div>"
+                st = str(p.get("style", "") or "")
+                ly = str(p.get("lyrics", "") or "")
+                sd = p.get("seed", 12)
+                filled = bool(st.strip() or ly.strip())
+                cls = "pcard" if filled else "pcard collapsed"
+                pc += (f"<div class='{cls}' id='pc{i}'><div class='phead' onclick='pToggle({i})'><b>prompt {i + 1}</b>"
+                       f"<button type='button' class='x' onclick='pDel(event,{i})' title='delete prompt'>&#10005;</button></div>"
+                       f"<div class='pbody'><div class='plabel'>Style / caption</div>"
+                       f"<input name='style_{i}' value='{_h.escape(st, quote=True)}'>"
+                       f"<div class='plabel'>Lyrics</div>"
+                       f"<textarea name='lyrics_{i}' rows='5'>{_h.escape(ly, quote=False)}</textarea>"
+                       f"<div class='plabel'>Seed</div>"
+                       f"<input class='seedbox' name='seed_{i}' value='{sd}' type='number'></div></div>")
             g = d["gpu"]
             gp = (f"<b>{_h.escape(g.get('name', 'GPU'))}</b><br>🌡 {g.get('temp', '-')} · load {g.get('load', '-')} · {g.get('mem', '-')} ({g.get('mempct', 0)}%) · {g.get('pwr', '-')}" if g else "<span class='muted'>no GPU visible</span>")
             b = HTML.replace("<!--STATIC_STATUS-->", st).replace("<!--STATIC_SAMPLES-->", ss or "<div class='muted'>no samples yet</div>").replace("<!--STATIC_FILES-->", ff).replace("FILLPCT", str(d["pct"])).replace("<!--STATIC_SONGS-->", sg or "<div class='muted'>no songs yet</div>").replace("<!--STATIC_RUNS-->", rs or "<div class='muted'>no runs yet</div>").replace("<!--STATIC_PREP-->", pp).replace("<!--STATIC_GPU-->", gp).replace("<!--LOSSGRAPH-->", d["loss_svg"] or "<div class='muted'>no training data yet</div>").replace("<!--STATIC_PROMPTS-->", pc)
