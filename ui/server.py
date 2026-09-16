@@ -80,6 +80,7 @@ input,textarea,select{font-size:14px}
 <div id="songs"></div><!--STATIC_SONGS-->
 </div>
 <div id="pane3"><!--STATIC_STATUS-->
+<iframe src="/live-mini" style="width:100%;height:118px;border:1px solid #2C2C2C;border-radius:10px;overflow:hidden" scrolling="no" title="live progress"></iframe>
 <div class="bar"><div class="fill" id="fill" style="width:FILLPCT%"></div></div>
 <div id="pct" class="muted"></div>
 </div>
@@ -526,7 +527,10 @@ class H(http.server.BaseHTTPRequestHandler):
                 return
             self._send(os.path.join(GEN, fn),
                          "audio/mpeg" if fn.endswith(".mp3") else "audio/flac")
-        elif self.path.split("?", 1)[0] == "/live":
+        elif self.path.split("?", 1)[0] in ("/live", "/live-mini"):
+            import time as _t2, html as _h2
+            d = snapshot()
+            mini = self.path.split("?", 1)[0] == "/live-mini"
             import time as _t2, html as _h2
             d = snapshot()
             rows = ""
@@ -535,7 +539,10 @@ class H(http.server.BaseHTTPRequestHandler):
             smp = ""
             for x in d["samples"]:
                 smp += f"<div class='ckpt'><b>step {x['step']}</b> <span class='muted'>{x['secs']}s</span> <a class='dl' href='/m/{x['file']}'>play/download</a></div>"
-            page = f"""<!DOCTYPE html><html><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><meta http-equiv="refresh" content="20"><title>forge live</title><style>body{{background:#0D0D0D;color:#fff;font-family:system-ui,sans-serif;max-width:640px;margin:0 auto;padding:18px}}h2{{font-size:20px}}.bar{{height:12px;background:#1E1E1E;border:1px solid #2C2C2C;border-radius:6px;overflow:hidden}}.fill{{height:100%;background:linear-gradient(90deg,#E50914,#FF3B30);width:{d['pct']}%}}.ckpt{{background:#1E1E1E;border:1px solid #2C2C2C;border-radius:10px;padding:10px;margin:8px 0}}.muted{{color:#A0A0A0;font-size:13px}}.dl{{color:#FF6B60}}.grid{{display:grid;grid-template-columns:1fr 1fr;gap:8px}}.card{{background:#1E1E1E;border:1px solid #2C2C2C;border-radius:10px;padding:10px;color:#A0A0A0;font-size:12px}}.card b{{font-size:19px;color:#fff}}</style></head><body><h2>forge live <span class="muted">· auto every 20s · {_t2.strftime('%H:%M:%S')}</span></h2><div class="bar"><div class="fill"></div></div><div class="muted">run {active_run()} · step {d['step_est']}/{TOTAL} ({d['pct']}%) · {d['phase']} · loss {d['loss']}</div><div class="grid"><div class="card">artist eval<div><b>{d['artist_eval']}</b></div></div><div class="card">minted eval<div><b>{d['minted_eval']}</b></div></div><div class="card">ETA<div><b>{d['eta']}</b></div></div><div class="card">prep<div><b>{d['prep'].get('stage', 'idle')}</b></div></div></div><h3 style="font-size:12px;text-transform:uppercase;letter-spacing:.14em;color:#A0A0A0">checkpoints</h3>{rows or "<div class='muted'>none yet</div>"}<h3 style="font-size:12px;text-transform:uppercase;letter-spacing:.14em;color:#A0A0A0">samples</h3>{smp or "<div class='muted'>none yet</div>"}<p><a class="dl" href="/">← full dashboard</a></p></body></html>"""
+            if mini:
+                page = f"""<!DOCTYPE html><html><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><meta http-equiv="refresh" content="20"><style>body{{background:#0D0D0D;color:#fff;font-family:system-ui,sans-serif;margin:0;padding:10px 12px}}a{{color:#FF6B60;font-size:12px}}.bar{{height:8px;background:#1E1E1E;border:1px solid #2C2C2C;border-radius:5px;overflow:hidden;margin:6px 0}}.fill{{height:100%;background:linear-gradient(90deg,#E50914,#FF3B30);width:{d['pct']}%}}.t{{font-size:14px}}.muted{{color:#A0A0A0;font-size:12px}}</style></head><body><div class="bar"><div class="fill"></div></div><div class="t">step {d['step_est']}/{TOTAL} ({d['pct']}%) · {d['phase']} · loss {d['loss']} · eval {d['artist_eval']}</div><div class="muted">auto-refreshes · {_t2.strftime('%H:%M:%S')}</div></body></html>"""
+            else:
+                page = f"""<!DOCTYPE html><html><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><meta http-equiv="refresh" content="20"><title>forge live</title><style>body{{background:#0D0D0D;color:#fff;font-family:system-ui,sans-serif;max-width:640px;margin:0 auto;padding:18px}}h2{{font-size:20px}}.bar{{height:12px;background:#1E1E1E;border:1px solid #2C2C2C;border-radius:6px;overflow:hidden}}.fill{{height:100%;background:linear-gradient(90deg,#E50914,#FF3B30);width:{d['pct']}%}}.ckpt{{background:#1E1E1E;border:1px solid #2C2C2C;border-radius:10px;padding:10px;margin:8px 0}}.muted{{color:#A0A0A0;font-size:13px}}.dl{{color:#FF6B60}}.grid{{display:grid;grid-template-columns:1fr 1fr;gap:8px}}.card{{background:#1E1E1E;border:1px solid #2C2C2C;border-radius:10px;padding:10px;color:#A0A0A0;font-size:12px}}.card b{{font-size:19px;color:#fff}}</style></head><body><h2>forge live <span class="muted">· auto every 20s · {_t2.strftime('%H:%M:%S')}</span></h2><div class="bar"><div class="fill"></div></div><div class="muted">run {active_run()} · step {d['step_est']}/{TOTAL} ({d['pct']}%) · {d['phase']} · loss {d['loss']}</div><div class="grid"><div class="card">artist eval<div><b>{d['artist_eval']}</b></div></div><div class="card">minted eval<div><b>{d['minted_eval']}</b></div></div><div class="card">ETA<div><b>{d['eta']}</b></div></div><div class="card">prep<div><b>{d['prep'].get('stage', 'idle')}</b></div></div></div><h3 style="font-size:12px;text-transform:uppercase;letter-spacing:.14em;color:#A0A0A0">checkpoints</h3>{rows or "<div class='muted'>none yet</div>"}<h3 style="font-size:12px;text-transform:uppercase;letter-spacing:.14em;color:#A0A0A0">samples</h3>{smp or "<div class='muted'>none yet</div>"}<p><a class="dl" href="/">← full dashboard</a></p></body></html>"""
             b = page.encode()
             self.send_response(200)
             self.send_header("Content-Type", "text/html")
