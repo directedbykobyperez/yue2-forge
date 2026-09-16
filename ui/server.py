@@ -600,6 +600,14 @@ class H(http.server.BaseHTTPRequestHandler):
             self.send_header("Content-Length", str(len(b)))
             self.end_headers()
             self.wfile.write(b)
+        elif self.path.split("?", 1)[0] == "/testtabs":
+            tp = """<!DOCTYPE html><html><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><style>body{background:#111;color:#eee;font-family:sans-serif;padding:20px}.tabradio{position:absolute;opacity:0}#pa,#pb{display:none}#a:checked~#pa,#b:checked~#pb{display:block}label{padding:10px 20px;background:#333;border-radius:8px;margin-right:8px}#a:checked~* label[for="a"],#b:checked~* label[for="b"]{background:purple}</style></head><body><input type="radio" name="t" id="a" class="tabradio" checked><input type="radio" name="t" id="b" class="tabradio"><label for="a">SHOW-A</label><label for="b">SHOW-B</label><div id="pa"><h2>PANE A VISIBLE</h2></div><div id="pb"><h2>PANE B VISIBLE</h2></div><p>If tapping SHOW-B still shows A, your browser cannot do CSS tabs.</p></body></html>"""
+            b = tp.encode()
+            self.send_response(200)
+            self.send_header("Content-Type", "text/html")
+            self.send_header("Content-Length", str(len(b)))
+            self.end_headers()
+            self.wfile.write(b)
         elif self.path.split("?", 1)[0] == "/confirm_delete":
             import urllib.parse as _uq2
             q = self.path.split("?", 1)[1] if "?" in self.path else ""
