@@ -23,60 +23,30 @@ DL = {
 HTML = """<!DOCTYPE html><html><head><meta charset="utf-8">
 <meta name="viewport" content="width=device-width,initial-scale=1">
 <title>FORGETITLE</title>
-<style>body{background:#0D0D0D;color:#FFFFFF;font-family:system-ui,-apple-system,sans-serif;margin:0;padding:0}
-.layout{display:flex;min-height:100vh}
-.side{width:230px;flex-shrink:0;background:#121212;border-right:1px solid #2C2C2C;padding:20px 14px;display:flex;flex-direction:column;gap:6px;position:sticky;top:0;height:100vh;box-sizing:border-box}
-.brand{display:flex;align-items:center;gap:10px;padding:4px 8px 16px;font-weight:800;font-size:17px;letter-spacing:.02em}
-.brand img{width:34px;height:34px;border-radius:8px}
-.nav{display:flex;flex-direction:column;gap:6px}
-.nav label{display:block;padding:11px 14px;border-radius:8px;color:#A0A0A0;font-size:14px;font-weight:600;cursor:pointer;border:1px solid transparent}
-.nav label:hover{background:#1E1E1E;color:#fff}
-.side-foot{margin-top:auto;display:flex;flex-direction:column;gap:10px}
-.cta{display:block;text-align:center;padding:12px;border-radius:8px;background:#E50914;color:#fff;font-weight:700;text-decoration:none;font-size:14px}
-.cta:hover{background:#FF3B30}
-.pill{display:inline-flex;align-items:center;gap:7px;font-size:12px;color:#A0A0A0;background:#1E1E1E;border:1px solid #2C2C2C;border-radius:20px;padding:6px 12px}
-.dot{width:8px;height:8px;border-radius:50%;background:#22c55e}
-main{flex:1;min-width:0;padding:24px 28px;max-width:860px}
-.right{width:290px;flex-shrink:0;padding:24px 20px 24px 0;display:flex;flex-direction:column;gap:12px}
-h2{font-size:24px;margin:0 0 4px;letter-spacing:.01em}
-h3{font-size:12px;text-transform:uppercase;letter-spacing:.14em;color:#A0A0A0;margin:22px 0 10px}
-.bar{height:10px;background:#1E1E1E;border:1px solid #2C2C2C;border-radius:6px;overflow:hidden;margin:10px 0}
-.fill{height:100%;background:linear-gradient(90deg,#E50914,#FF3B30);width:0%}
+<style>body{background:#111;color:#eee;font-family:system-ui,sans-serif;max-width:760px;margin:0 auto;padding:20px}
+.bar{height:26px;background:#333;border-radius:13px;overflow:hidden;margin:10px 0}
+.fill{height:100%;background:linear-gradient(90deg,#7c3aed,#22d3ee);width:0%}
 .grid{display:grid;grid-template-columns:1fr 1fr;gap:8px;margin:12px 0}
-.card{background:#1E1E1E;border:1px solid #2C2C2C;border-radius:10px;padding:12px}.card b{font-size:20px;color:#fff}.card{color:#A0A0A0;font-size:12px}
-.ckpt{background:#1E1E1E;border:1px solid #2C2C2C;border-radius:10px;padding:12px;margin:8px 0}
-audio{width:100%;margin-top:6px}.muted{color:#A0A0A0;font-size:13px}
-.play{width:52px;height:52px;border-radius:50%;border:0;background:#E50914;color:#fff;font-size:20px;margin:6px 8px 6px 0;vertical-align:middle}
-.seek{width:60%;vertical-align:middle;accent-color:#E50914}
-.dl{color:#FF6B60;text-decoration:none;font-size:14px}
-pre{background:#000;border:1px solid #2C2C2C;padding:10px;border-radius:8px;overflow:auto;max-height:220px;font-size:12px}
-button{font-size:14px}
-input,textarea,select{font-size:14px}
-.tabradio{position:absolute;opacity:0;pointer-events:none}#pane1,#pane2,#pane3{display:none}#t1:checked~.layout #pane1,#t2:checked~.layout #pane2,#t3:checked~.layout #pane3{display:block}#t1:checked~.layout label[for="t1"],#t2:checked~.layout label[for="t2"],#t3:checked~.layout label[for="t3"]{background:#1E1E1E;color:#fff;border-color:#2C2C2C}#t1:checked~.layout label[for="t1"]::before,#t2:checked~.layout label[for="t2"]::before,#t3:checked~.layout label[for="t3"]::before{content:"";display:inline-block;width:8px;height:8px;border-radius:50%;background:#FF3B30;margin-right:9px}
-@media(max-width:900px){.layout{flex-direction:column}.side{width:auto;height:auto;position:static;border-right:0;border-bottom:1px solid #2C2C2C}.nav{flex-direction:row}.nav label{flex:1;text-align:center;font-size:13px;padding:10px 4px}.right{width:auto;padding:0 16px 20px}main{padding:16px}}@media(max-width:640px){input,textarea,select{max-width:100%!important;box-sizing:border-box}button{margin:6px 4px 6px 0}.grid{grid-template-columns:1fr 1fr}}</style></head>
-<body>
-<input type="radio" name="ftab" id="t1" class="tabradio" checked><input type="radio" name="ftab" id="t2" class="tabradio"><input type="radio" name="ftab" id="t3" class="tabradio">
-<div class="layout"><aside class="side">
-<div class="brand"><img src="/assets/logo.png" alt="logo">yue2-forge</div>
-<div class="nav">
-<label for="t1" id="tb1" class="tab" onclick="tab(1)">Runs</label><label for="t2" id="tb2" class="tab" onclick="tab(2)">Dataset studio</label><label for="t3" id="tb3" class="tab" onclick="tab(3)">Training</label>
-</div>
-<div class="side-foot">
-<!--STATIC_PHASE-->
-<a class="cta" href="/?tab=3">Start training &rarr;</a>
-<div><span class="pill"><span class="dot"></span>V1</span></div>
-</div>
-</aside><main>
-<h2>FORGETITLE</h2>
+.card{background:#1c1c1c;border-radius:8px;padding:10px}.card b{font-size:20px}
+.ckpt{background:#1c1c1c;border-radius:8px;padding:10px;margin:8px 0}
+ audio{width:100%;margin-top:6px}.muted{color:#888;font-size:13px}
+.play{width:52px;height:52px;border-radius:50%;border:0;background:linear-gradient(135deg,#7c3aed,#22d3ee);color:#fff;font-size:20px;margin:6px 8px 6px 0;vertical-align:middle}
+.seek{width:60%;vertical-align:middle;accent-color:#22d3ee}
+.dl{color:#22d3ee;text-decoration:none;font-size:14px}
+pre{background:#000;padding:10px;border-radius:8px;overflow:auto;max-height:220px;font-size:12px}.tabs{display:flex;gap:8px;margin:12px 0;position:sticky;top:0;background:#111;padding:8px 0;z-index:5}.tab{flex:1;padding:12px;border-radius:8px;border:1px solid #444;background:#1c1c1c;color:#eee;font-size:15px;text-align:center;cursor:pointer}.tab.on{background:#7c3aed;border-color:#7c3aed}.tabradio{position:absolute;opacity:0;pointer-events:none}#pane1,#pane2,#pane3{display:none}#t1:checked~#pane1,#t2:checked~#pane2,#t3:checked~#pane3{display:block}#t1:checked~.tabs label[for="t1"],#t2:checked~.tabs label[for="t2"],#t3:checked~.tabs label[for="t3"]{background:#7c3aed;border-color:#7c3aed}
+@media(max-width:640px){body{padding:12px}input,textarea,select{max-width:100%!important;box-sizing:border-box}button{margin:6px 4px 6px 0}.grid{grid-template-columns:1fr 1fr}.tab{font-size:13px;padding:10px 4px}}.pill{display:inline-flex;align-items:center;gap:7px;font-size:12px;color:#888;background:#1c1c1c;border:1px solid #333;border-radius:20px;padding:6px 12px}.dot{width:8px;height:8px;border-radius:50%;background:#22c55e}</style></head>
+<body><h2>&#127926; FORGETITLE</h2>
 <!--MSG-->
+<input type="radio" name="ftab" id="t1" class="tabradio" checked><input type="radio" name="ftab" id="t2" class="tabradio"><input type="radio" name="ftab" id="t3" class="tabradio">
+<div class="tabs"><label for="t1" id="tb1" class="tab on" onclick="tab(1)">1 · Runs</label><label for="t2" id="tb2" class="tab" onclick="tab(2)">2 · Dataset studio</label><label for="t3" id="tb3" class="tab" onclick="tab(3)">3 · Training</label></div>
 <!--REFRESH-->
 <div id="pane1"><h3>Runs</h3>
 <div id="runs"></div><!--STATIC_RUNS-->
-<form method="POST" action="/create_run"><div class="ckpt">new: <input name="name" placeholder="artist_name" style="width:180px;background:#000;color:#eee;border:1px solid #444;border-radius:6px;padding:8px"> <button style="padding:8px 16px;border-radius:6px;border:0;background:#E50914;color:#fff">Create</button> <span class="muted">then set its trigger below</span></div></form>
+<form method="POST" action="/create_run"><div class="ckpt">new: <input name="name" placeholder="artist_name" style="width:180px;background:#000;color:#eee;border:1px solid #444;border-radius:6px;padding:8px"> <button style="padding:8px 16px;border-radius:6px;border:0;background:#7c3aed;color:#fff">Create</button> <span class="muted">then set its trigger below</span></div></form>
 </div>
 <div id="pane2"><h3>Dataset studio <span class="muted" id="ds_run"></span></h3>
 <div class="ckpt"><span class="muted" id="ds_count"></span></div>
-<form method="POST" action="/upload_audio" enctype="multipart/form-data"><div class="ckpt">songs + lyrics files — pick many at once. audio (wav/flac/ogg/mp3/m4a/webm) converts to flac; a matching <b>songname.txt</b> auto-fills that song's lyrics<br><input type="file" name="audio" multiple accept="audio/*,.wav,.flac,.ogg,.mp3,.m4a,.webm,.txt"> <button style="padding:8px 16px;border-radius:6px;border:0;background:#E50914;color:#fff">Upload</button></div></form>
+<form method="POST" action="/upload_audio" enctype="multipart/form-data"><div class="ckpt">songs + lyrics files — pick many at once. audio (wav/flac/ogg/mp3/m4a/webm) converts to flac; a matching <b>songname.txt</b> auto-fills that song's lyrics<br><input type="file" name="audio" multiple accept="audio/*,.wav,.flac,.ogg,.mp3,.m4a,.webm,.txt"> <button style="padding:8px 16px;border-radius:6px;border:0;background:#7c3aed;color:#fff">Upload</button></div></form>
 <div id="songs"></div><!--STATIC_SONGS-->
 </div>
 <div id="pane3"><!--STATIC_STATUS-->
@@ -86,20 +56,6 @@ input,textarea,select{font-size:14px}
 <div id="pct" class="muted"></div>
 </div>
 
-<form method="POST" action="/start_training"><div class="ckpt">training — active run only<br>from <select name="init" style="background:#000;color:#eee;border:1px solid #444;border-radius:6px;padding:8px"><option value="fresh">fresh</option><option value="last">last.pt</option><option value="best">best.pt</option></select> rank <select name="rank"><option value="16">16</option><option value="32">32</option><option value="64" selected>64</option><option value="128">128</option></select> to step <input name="steps" type="number" value="1600" style="width:90px;background:#000;color:#eee;border:1px solid #444;border-radius:6px;padding:8px"> <button style="padding:8px 16px;border-radius:6px;border:0;background:#E50914;color:#fff">Start training</button><br><span class="muted">needs 7+ ready songs + dataset prepped (finish songs above, then prep via scripts/run_all.sh steps 1-3)</span></div></form>
-<h3>Samples (your custom prompt below)</h3>
-<!--STATIC_SAMPLES-->
-<div id="samples"></div>
-<h3>Sample prompts <span class="muted">(up to 4 — one render each per checkpoint)</span></h3>
-<form method="POST" action="/save_cfg">
-<!--STATIC_PROMPTS-->
-<div class="ckpt"><label class="muted"><input type="checkbox" name="walk" value="1"WALKCHECKED> walk seed per checkpoint</label>
-<button style="padding:8px 16px;border-radius:6px;border:0;background:#E50914;color:#fff">Save prompts</button></div></form>
-<div id="ckpts"></div>
-<h3>Downloads</h3><!--STATIC_FILES--><div id="dl"></div>
-
-</div></main><aside class='right'><h3>Status</h3>
-<!--STATIC_GPU-->
 <div class="grid">
 <div class="card">step<div><b id="step">-</b> / 1600</div></div>
 <div class="card">phase<div><b id="phase">-</b></div></div>
@@ -108,11 +64,24 @@ input,textarea,select{font-size:14px}
 <div class="card">minted_val eval<div><b id="mval">-</b></div></div>
 <div class="card">ETA<div><b id="eta">-</b></div></div>
 
-<div class="ckpt">dataset prep — features + stems + tokens (10–40 min by dataset size, runs in background)<br><form method="POST" action="/prepare_dataset"><button style="padding:8px 16px;border-radius:6px;border:0;background:#E50914;color:#fff">Prepare dataset</button></form> <span class="muted" id="prep_line"></span></div>
+<div class="ckpt">dataset prep — features + stems + tokens (10–40 min by dataset size, runs in background)<br><form method="POST" action="/prepare_dataset"><button style="padding:8px 16px;border-radius:6px;border:0;background:#f59e0b;color:#000">Prepare dataset</button></form> <span class="muted" id="prep_line"></span></div>
 <!--STATIC_PREP-->
+<form method="POST" action="/start_training"><div class="ckpt">training — active run only<br>from <select name="init" style="background:#000;color:#eee;border:1px solid #444;border-radius:6px;padding:8px"><option value="fresh">fresh</option><option value="last">last.pt</option><option value="best">best.pt</option></select> rank <select name="rank"><option value="16">16</option><option value="32">32</option><option value="64" selected>64</option><option value="128">128</option></select> to step <input name="steps" type="number" value="1600" style="width:90px;background:#000;color:#eee;border:1px solid #444;border-radius:6px;padding:8px"> <button style="padding:8px 16px;border-radius:6px;border:0;background:#22c55e;color:#000">Start training</button><br><span class="muted">needs 7+ ready songs + dataset prepped (finish songs above, then prep via scripts/run_all.sh steps 1-3)</span></div></form>
+<h3>Samples (your custom prompt below)</h3>
+<!--STATIC_SAMPLES-->
+<div id="samples"></div>
+<h3>Sample prompts <span class="muted">(up to 4 — one render each per checkpoint)</span></h3>
+<form method="POST" action="/save_cfg">
+<!--STATIC_PROMPTS-->
+<div class="ckpt"><label class="muted"><input type="checkbox" name="walk" value="1"WALKCHECKED> walk seed per checkpoint</label>
+<button style="padding:8px 16px;border-radius:6px;border:0;background:#7c3aed;color:#fff">Save prompts</button></div></form>
+<div id="ckpts"></div>
+<h3>Downloads</h3><!--STATIC_FILES--><div id="dl"></div>
+
+<!--STATIC_GPU-->
 <h3>Log tail</h3><pre id="log">STATICLOG</pre>
 <div class="muted">V1</div>
-</aside></div>
+</div>
 <script>
 let songsDirty=false;
 
@@ -619,9 +588,9 @@ class H(http.server.BaseHTTPRequestHandler):
                 pl = f" · prompt {x['p'] + 1}" if x['p'] >= 0 else ""
                 smp += f"<div class='ckpt'><b>step {x['step']}{pl}</b> <span class='muted'>{x['secs']}s</span> <a class='dl' href='/m/{x['file']}'>play/download</a></div>"
             if mini:
-                page = f"""<!DOCTYPE html><html><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><meta http-equiv="refresh" content="20"><style>body{{background:#0D0D0D;color:#fff;font-family:system-ui,sans-serif;margin:0;padding:10px 12px}}a{{color:#FF6B60;font-size:12px}}.bar{{height:8px;background:#1E1E1E;border:1px solid #2C2C2C;border-radius:5px;overflow:hidden;margin:6px 0}}.fill{{height:100%;background:linear-gradient(90deg,#E50914,#FF3B30);width:{d['pct']}%}}.t{{font-size:14px}}.muted{{color:#A0A0A0;font-size:12px}}</style></head><body><div class="bar"><div class="fill"></div></div><div class="t">step {d['step_est']}/{TOTAL} ({d['pct']}%) · {d['phase']} · loss {d['loss']} · eval {d['artist_eval']}</div><div class="muted">auto-refreshes · {_t2.strftime('%H:%M:%S')}</div></body></html>"""
+                page = f"""<!DOCTYPE html><html><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><meta http-equiv="refresh" content="20"><style>body{{background:#0D0D0D;color:#fff;font-family:system-ui,sans-serif;margin:0;padding:10px 12px}}a{{color:#22d3ee;font-size:12px}}.bar{{height:8px;background:#1E1E1E;border:1px solid #2C2C2C;border-radius:5px;overflow:hidden;margin:6px 0}}.fill{{height:100%;background:linear-gradient(90deg,#7c3aed,#22d3ee);width:{d['pct']}%}}.t{{font-size:14px}}.muted{{color:#A0A0A0;font-size:12px}}</style></head><body><div class="bar"><div class="fill"></div></div><div class="t">step {d['step_est']}/{TOTAL} ({d['pct']}%) · {d['phase']} · loss {d['loss']} · eval {d['artist_eval']}</div><div class="muted">auto-refreshes · {_t2.strftime('%H:%M:%S')}</div></body></html>"""
             else:
-                page = f"""<!DOCTYPE html><html><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><meta http-equiv="refresh" content="20"><title>forge live</title><style>body{{background:#0D0D0D;color:#fff;font-family:system-ui,sans-serif;max-width:640px;margin:0 auto;padding:18px}}h2{{font-size:20px}}.bar{{height:12px;background:#1E1E1E;border:1px solid #2C2C2C;border-radius:6px;overflow:hidden}}.fill{{height:100%;background:linear-gradient(90deg,#E50914,#FF3B30);width:{d['pct']}%}}.ckpt{{background:#1E1E1E;border:1px solid #2C2C2C;border-radius:10px;padding:10px;margin:8px 0}}.muted{{color:#A0A0A0;font-size:13px}}.dl{{color:#FF6B60}}.grid{{display:grid;grid-template-columns:1fr 1fr;gap:8px}}.card{{background:#1E1E1E;border:1px solid #2C2C2C;border-radius:10px;padding:10px;color:#A0A0A0;font-size:12px}}.card b{{font-size:19px;color:#fff}}</style></head><body><h2>forge live <span class="muted">· auto every 20s · {_t2.strftime('%H:%M:%S')}</span></h2><div class="bar"><div class="fill"></div></div><div class="muted">run {active_run()} · step {d['step_est']}/{TOTAL} ({d['pct']}%) · {d['phase']} · loss {d['loss']}</div><div class="grid"><div class="card">artist eval<div><b>{d['artist_eval']}</b></div></div><div class="card">minted eval<div><b>{d['minted_eval']}</b></div></div><div class="card">ETA<div><b>{d['eta']}</b></div></div><div class="card">prep<div><b>{d['prep'].get('stage', 'idle')}</b></div></div></div><h3 style="font-size:12px;text-transform:uppercase;letter-spacing:.14em;color:#A0A0A0">checkpoints</h3>{rows or "<div class='muted'>none yet</div>"}<h3 style="font-size:12px;text-transform:uppercase;letter-spacing:.14em;color:#A0A0A0">samples</h3>{smp or "<div class='muted'>none yet</div>"}<p><a class="dl" href="/">← full dashboard</a></p></body></html>"""
+                page = f"""<!DOCTYPE html><html><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><meta http-equiv="refresh" content="20"><title>forge live</title><style>body{{background:#0D0D0D;color:#fff;font-family:system-ui,sans-serif;max-width:640px;margin:0 auto;padding:18px}}h2{{font-size:20px}}.bar{{height:12px;background:#1E1E1E;border:1px solid #2C2C2C;border-radius:6px;overflow:hidden}}.fill{{height:100%;background:linear-gradient(90deg,#7c3aed,#22d3ee);width:{d['pct']}%}}.ckpt{{background:#1E1E1E;border:1px solid #2C2C2C;border-radius:10px;padding:10px;margin:8px 0}}.muted{{color:#A0A0A0;font-size:13px}}.dl{{color:#22d3ee}}.grid{{display:grid;grid-template-columns:1fr 1fr;gap:8px}}.card{{background:#1E1E1E;border:1px solid #2C2C2C;border-radius:10px;padding:10px;color:#A0A0A0;font-size:12px}}.card b{{font-size:19px;color:#fff}}</style></head><body><h2>forge live <span class="muted">· auto every 20s · {_t2.strftime('%H:%M:%S')}</span></h2><div class="bar"><div class="fill"></div></div><div class="muted">run {active_run()} · step {d['step_est']}/{TOTAL} ({d['pct']}%) · {d['phase']} · loss {d['loss']}</div><div class="grid"><div class="card">artist eval<div><b>{d['artist_eval']}</b></div></div><div class="card">minted eval<div><b>{d['minted_eval']}</b></div></div><div class="card">ETA<div><b>{d['eta']}</b></div></div><div class="card">prep<div><b>{d['prep'].get('stage', 'idle')}</b></div></div></div><h3 style="font-size:12px;text-transform:uppercase;letter-spacing:.14em;color:#A0A0A0">checkpoints</h3>{rows or "<div class='muted'>none yet</div>"}<h3 style="font-size:12px;text-transform:uppercase;letter-spacing:.14em;color:#A0A0A0">samples</h3>{smp or "<div class='muted'>none yet</div>"}<p><a class="dl" href="/">← full dashboard</a></p></body></html>"""
             b = page.encode()
             self.send_response(200)
             self.send_header("Content-Type", "text/html")
@@ -698,7 +667,7 @@ class H(http.server.BaseHTTPRequestHandler):
             b = HTML.replace("<!--STATIC_STATUS-->", st).replace("<!--STATIC_SAMPLES-->", ss or "<div class='muted'>no samples yet</div>").replace("<!--STATIC_FILES-->", ff).replace("FILLPCT", str(d["pct"])).replace("<!--STATIC_SONGS-->", sg or "<div class='muted'>no songs yet</div>").replace("<!--STATIC_RUNS-->", rs or "<div class='muted'>no runs yet</div>").replace("<!--STATIC_PREP-->", pp).replace("<!--STATIC_GPU-->", gp).replace("<!--LOSSGRAPH-->", d["loss_svg"] or "<div class='muted'>no training data yet</div>").replace("<!--STATIC_PROMPTS-->", pc)
             b = b.replace('class="tabradio" checked', 'class="tabradio"')
             b = b.replace(f'id="t{tab}" class="tabradio"', f'id="t{tab}" class="tabradio" checked')
-            b = b.replace("<!--MSG-->", f"<div class='ckpt' style='border-color:#E50914'>{_h.escape(msg)}</div>" if msg else "")
+            b = b.replace("<!--MSG-->", f"<div class='ckpt' style='border-color:#7c3aed'>{_h.escape(msg)}</div>" if msg else "")
             b = b.replace("<!--STATIC_PHASE-->", f"<span class='pill'><span class='dot'></span>{_h.escape(str(d['phase']))} · {d['step_est']}/{TOTAL}</span>")
             b = b.replace("<!--REFRESH-->", f"<div style='text-align:right'><a class='dl' href='/?tab={tab}'>↻ Refresh numbers</a> <span class='muted'>(auto-refresh is blocked in your browser)</span></div>")
             b = b.replace('<b id="step">-</b>', f"<b id=\"step\">{d['step_est']}</b>").replace('<b id="phase">-</b>', f"<b id=\"phase\">{d['phase']}</b>").replace('<b id="loss">-</b>', f"<b id=\"loss\">{d['loss']}</b>").replace('<b id="eval">-</b>', f"<b id=\"eval\">{d['artist_eval']}</b>").replace('<b id="mval">-</b>', f"<b id=\"mval\">{d['minted_eval']}</b>")
