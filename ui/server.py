@@ -39,7 +39,6 @@ pre{background:#000;padding:10px;border-radius:8px;overflow:auto;max-height:220p
 <!--STATIC_GPU--></div></div>
 <!--MSG-->
 <div class="tabs"><a class="tabTAB1ON" href="/?tab=1">1 · Runs</a><a class="tabTAB2ON" href="/?tab=2">2 · Dataset studio</a><a class="tabTAB3ON" href="/?tab=3">3 · Training</a><a class="tabTAB4ON" href="/?tab=4">4 · Logs</a></div>
-<!--REFRESH-->
 <!--PANE1--><h3>Runs</h3>
 <div id="runs"></div><!--STATIC_RUNS-->
 <form method="POST" action="/create_run"><div class="ckpt">new: <input name="name" placeholder="artist_name" style="width:180px;background:#000;color:#eee;border:1px solid #444;border-radius:6px;padding:8px"> <button style="padding:8px 16px;border-radius:6px;border:0;background:#7c3aed;color:#fff">Create</button> <span class="muted">then set its trigger below</span></div></form>
@@ -685,7 +684,6 @@ class H(http.server.BaseHTTPRequestHandler):
             b = b.replace(f'id="t{tab}" class="tabradio"', f'id="t{tab}" class="tabradio" checked')
             b = b.replace("<!--MSG-->", f"<div class='ckpt' style='border-color:#7c3aed'>{_h.escape(msg)}</div>" if msg else "")
             b = b.replace("<!--STATIC_PHASE-->", f"<span class='pill'><span class='dot'></span>{_h.escape(str(d['phase']))} · {d['step_est']}/{TOTAL}</span>")
-            b = b.replace("<!--REFRESH-->", f"<div style='text-align:right'><a class='dl' href='/?tab={tab}'>↻ Refresh numbers</a> <span class='muted'>(auto-refresh is blocked in your browser)</span></div>")
             b = b.replace('<b id="step">-</b>', f"<b id=\"step\">{d['step_est']}</b>").replace('<b id="phase">-</b>', f"<b id=\"phase\">{d['phase']}</b>").replace('<b id="loss">-</b>', f"<b id=\"loss\">{d['loss']}</b>").replace('<b id="eval">-</b>', f"<b id=\"eval\">{d['artist_eval']}</b>").replace('<b id="mval">-</b>', f"<b id=\"mval\">{d['minted_eval']}</b>")
             b = b.replace('<b id="eta">-</b>', f"<b id=\"eta\">{d['eta']}</b>")
             b = b.replace("FORGETITLE", _h.escape(os.environ.get("FORGE_TITLE", "YuE2-forge LoRA training")))
