@@ -81,6 +81,7 @@ input,textarea,select{font-size:14px}
 </div>
 <div id="pane3"><!--STATIC_STATUS-->
 <iframe src="/live-mini" style="width:100%;height:118px;border:1px solid #2C2C2C;border-radius:10px;overflow:hidden" scrolling="no" title="live progress"></iframe>
+<h3>Loss graph</h3><!--LOSSGRAPH-->
 <div class="bar"><div class="fill" id="fill" style="width:FILLPCT%"></div></div>
 <div id="pct" class="muted"></div>
 </div>
@@ -100,6 +101,7 @@ Seed <input id="f_seed" name="seed" value="CFGSEED" type="number" style="width:1
 <h3>Downloads</h3><!--STATIC_FILES--><div id="dl"></div>
 
 </div></main><aside class='right'><h3>Status</h3>
+<!--STATIC_GPU-->
 <div class="grid">
 <div class="card">step<div><b id="step">-</b> / 1600</div></div>
 <div class="card">phase<div><b id="phase">-</b></div></div>
@@ -188,7 +190,7 @@ if(!dirty&&d.cfg){document.getElementById('f_style').value=d.cfg.style;document.
 
 def snapshot():
     d = {"step": 0, "pct": 0.0, "phase": "starting", "loss": "-", "artist_eval": "-",
-         "minted_eval": "-", "eta": "-", "note": "", "checkpoints": [], "samples": [], "files": [], "log_tail": "", "step_est": 0, "cfg": {}, "studio": {}, "runs": {"active": "", "runs": []}, "prep": {}}
+         "minted_eval": "-", "eta": "-", "note": "", "checkpoints": [], "samples": [], "files": [], "log_tail": "", "step_est": 0, "cfg": {}, "studio": {}, "runs": {"active": "", "runs": []}, "prep": {}, "gpu": {}, "loss_svg": ""}
     try:
         lines = open(LOG, errors="replace").read().splitlines()
     except Exception:
@@ -286,6 +288,8 @@ def snapshot():
     d["studio"] = studio_snapshot()
     d["runs"] = runs_snapshot()
     d["prep"] = prep_status()
+    d["gpu"] = gpu_snapshot()
+    d["loss_svg"] = loss_svg(loss_series())
     return d
 
 def _registry():
@@ -438,6 +442,70 @@ def prep_status():
         return json.load(open("/workspace/prep_status.json"))
     except Exception:
         return {"stage": "idle", "detail": "not started", "done": False, "error": ""}
+def loss_series():
+    """Parse train log -> {loss:[(step,v)], artist:[...], minted:[...]}."""
+    out = {"loss": [], "artist": [], "minted": []}
+    try:
+        lines = open(LOG, errors="replace").read().splitlines()
+    except Exception:
+        return out
+    for ln in lines:
+        m = re.match(r"step (\d+) loss ([\d.]+) cursor", ln)
+        if m:
+            out["loss"].append((int(m.group(1)), float(m.group(2))))
+        m = re.match(r"EVAL step (\d+) minted_val ([\d.]+) artist ([\d.]+)", ln)
+        if m:
+            out["minted"].append((int(m.group(1)), float(m.group(2))))
+            out["artist"].append((int(m.group(1)), float(m.group(3))))
+    return out
+def gpu_snapshot():
+    try:
+        q = subprocess.run(["nvidia-smi", "--query-gpu=name,temperature.gpu,utilization.gpu,memory.used,memory.total,power.draw,power.limit", "--format=csv,noheader,nounits"], capture_output=True, text=True, timeout=8)
+        if q.returncode != 0:
+            return {}
+        p = [x.strip() for x in q.stdout.splitlines()[0].split(",")]
+        return {"name": p[0], "temp": p[1] + "°C", "load": p[2] + "%",
+                "mem": f"{float(p[3]) / 1024:.1f} / {float(p[4]) / 1024:.1f} GB",
+                "mempct": round(100 * float(p[3]) / max(1, float(p[4]))),
+                "pwr": f"{p[5]} / {p[6]} W"}
+    except Exception:
+        return {}
+def loss_svg(series, w=620, h=180):
+    """Dark SVG chart, no JS needed. Returns '' when empty."""
+    pts = [(s, v) for k in ("loss", "artist", "minted") for s, v in series[k]]
+    if len(pts) < 2:
+        return ""
+    xs = [p[0] for p in pts]
+    vs = [p[1] for p in pts]
+    x0, x1 = min(xs), max(xs) or 1
+    v0, v1 = min(vs), max(vs)
+    if v1 - v0 < 1e-6:
+        v1 = v0 + 1
+    pad = 34
+    def X(s):
+        return pad + (s - x0) / (x1 - x0) * (w - pad - 8) if x1 > x0 else pad
+    def Y(v):
+        return 8 + (1 - (v - v0) / (v1 - v0)) * (h - 16)
+    def smooth(seq, win=5):
+        sm = []
+        for i in range(len(seq)):
+            w_ = seq[max(0, i - win + 1):i + 1]
+            sm.append((seq[i][0], sum(v for _, v in w_) / len(w_)))
+        return sm
+    colors = {"loss": "#FF3B30", "artist": "#22d3ee", "minted": "#A0A0A0"}
+    el = [f"<svg viewBox='0 0 {w} {h}' style='width:100%' role='img'>"]
+    for k in ("minted", "artist", "loss"):
+        seq = smooth(series[k])
+        if len(seq) < 2:
+            continue
+        el.append("<polyline fill='none' stroke='" + colors[k] + "' stroke-width='1.6' points='" +
+                  " ".join(f"{X(s):.1f},{Y(v):.1f}" for s, v in seq) + "'/>")
+    el.append(f"<text x='4' y='{Y(v1) + 3}' fill='#A0A0A0' font-size='9'>{v1:.1f}</text>")
+    el.append(f"<text x='4' y='{Y(v0) + 3}' fill='#A0A0A0' font-size='9'>{v0:.1f}</text>")
+    el.append(f"<text x='{w - 44}' y='{h - 2}' fill='#A0A0A0' font-size='9'>step {x1}</text>")
+    el.append("</svg>")
+    leg = "".join(f"<span class='muted'><span style='color:{c}'>●</span> {k} </span>" for k, c in colors.items())
+    return "".join(el) + "<div>" + leg + "</div>"
 class H(http.server.BaseHTTPRequestHandler):
     def log_message(self, *a):
         pass
@@ -607,7 +675,9 @@ class H(http.server.BaseHTTPRequestHandler):
                 sw = "" if act else f"<form method='POST' action='/switch_run' style='display:inline'><input type='hidden' name='name' value='{x['name']}'><button>Switch</button></form>"
                 rs += f"<div class='ckpt'><b>{x['name']}</b>{' (active)' if act else ''} <span class='muted'>{x['ready']}/{x['total']} songs" + (f" | ckpts {','.join(map(str, x['ckpts']))}" if x["ckpts"] else "") + "</span> " + sw + f" <a href='/confirm_delete?run={x['name']}' style='color:#f87171;text-decoration:none;font-size:18px' title='delete run'>✕</a><br><form method='POST' action='/set_trigger'>trigger: <input name='trigger' value='{_h.escape(x['trigger'], quote=True)}' placeholder='empty = caption-only' style='width:160px;background:#000;color:#eee;border:1px solid #444;border-radius:6px;padding:8px'><input type='hidden' name='run' value='{x['name']}'> caption: <select name='template'><option value='full'{(' selected' if x['template'] != 'short' else '')}>trigger, in the style of…</option><option value='short'{(' selected' if x['template'] == 'short' else '')}>trigger, caption</option></select> <button>Save</button></form></div>"
             pp = f"<div class='muted'>prep: {d['prep'].get('stage', 'idle')} — {d['prep'].get('detail', '')}</div>"
-            b = HTML.replace("<!--STATIC_STATUS-->", st).replace("<!--STATIC_SAMPLES-->", ss or "<div class='muted'>no samples yet</div>").replace("<!--STATIC_FILES-->", ff).replace("FILLPCT", str(d["pct"])).replace("<!--STATIC_SONGS-->", sg or "<div class='muted'>no songs yet</div>").replace("<!--STATIC_RUNS-->", rs or "<div class='muted'>no runs yet</div>").replace("<!--STATIC_PREP-->", pp)
+            g = d["gpu"]
+            gp = (f"<div class='ckpt'><b>{_h.escape(g.get('name', 'GPU'))}</b><br><span class='muted'>🌡 {g.get('temp', '-')} · load {g.get('load', '-')} · {g.get('mem', '-')} ({g.get('mempct', 0)}%) · {g.get('pwr', '-')}</span></div>" if g else "<div class='muted'>no GPU visible</div>")
+            b = HTML.replace("<!--STATIC_STATUS-->", st).replace("<!--STATIC_SAMPLES-->", ss or "<div class='muted'>no samples yet</div>").replace("<!--STATIC_FILES-->", ff).replace("FILLPCT", str(d["pct"])).replace("<!--STATIC_SONGS-->", sg or "<div class='muted'>no songs yet</div>").replace("<!--STATIC_RUNS-->", rs or "<div class='muted'>no runs yet</div>").replace("<!--STATIC_PREP-->", pp).replace("<!--STATIC_GPU-->", gp).replace("<!--LOSSGRAPH-->", d["loss_svg"] or "<div class='muted'>no training data yet</div>")
             b = b.replace('class="tabradio" checked', 'class="tabradio"')
             b = b.replace(f'id="t{tab}" class="tabradio"', f'id="t{tab}" class="tabradio" checked')
             b = b.replace("<!--MSG-->", f"<div class='ckpt' style='border-color:#E50914'>{_h.escape(msg)}</div>" if msg else "")
