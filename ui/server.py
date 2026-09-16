@@ -69,7 +69,7 @@ pre{background:#000;padding:10px;border-radius:8px;overflow:auto;max-height:220p
 <h3>Samples (your custom prompt below)</h3>
 <!--STATIC_SAMPLES-->
 <div id="samples"></div>
-<h3>Sample prompts <span class="muted" style="font-weight:normal;font-size:14px">up to 4 — one render each per checkpoint</span></h3>
+<h3>Sample prompts</h3>
 <form method="POST" action="/save_cfg">
 <!--STATIC_PROMPTS-->
 <div class="ckpt"><label class="muted"><input type="checkbox" name="walk" value="1"WALKCHECKED> walk seed per checkpoint</label>
@@ -666,7 +666,7 @@ class H(http.server.BaseHTTPRequestHandler):
                 sw = "" if act else f"<form method='POST' action='/switch_run' style='display:inline'><input type='hidden' name='name' value='{x['name']}'><button>Switch</button></form>"
                 rs += f"<div class='ckpt'><b>{x['name']}</b>{' (active)' if act else ''} <span class='muted'>{x['ready']}/{x['total']} songs" + (f" | ckpts {','.join(map(str, x['ckpts']))}" if x["ckpts"] else "") + "</span> " + sw + f" <a href='/confirm_delete?run={x['name']}' style='color:#f87171;text-decoration:none;font-size:18px' title='delete run'>✕</a><br><form method='POST' action='/set_trigger'>trigger: <input name='trigger' value='{_h.escape(x['trigger'], quote=True)}' placeholder='empty = caption-only' style='width:160px;background:#000;color:#eee;border:1px solid #444;border-radius:6px;padding:8px'><input type='hidden' name='run' value='{x['name']}'> caption: <select name='template'><option value='full'{(' selected' if x['template'] != 'short' else '')}>trigger, in the style of…</option><option value='short'{(' selected' if x['template'] == 'short' else '')}>trigger, caption</option></select> <button>Save</button></form></div>"
             pp = f"<div class='muted'>prep: {d['prep'].get('stage', 'idle')} — {d['prep'].get('detail', '')}</div>"
-            pc = "<div class='ptools'><button type='button' class='padd' data-action='add'>+ Add prompt</button></div>"
+            pc = "<div class='ptools'><span class='muted' style='margin-right:8px'>up to 4 — one render each per checkpoint</span><button type='button' class='padd' data-action='add'>+ Add prompt</button></div>"
             plist = d["cfg"].get("prompts", [])
             while len(plist) < 4:
                 plist = plist + [{"style": "", "lyrics": "", "seed": 12}]
