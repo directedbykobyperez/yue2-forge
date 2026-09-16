@@ -33,28 +33,27 @@ HTML = """<!DOCTYPE html><html><head><meta charset="utf-8">
 .play{width:52px;height:52px;border-radius:50%;border:0;background:linear-gradient(135deg,#7c3aed,#22d3ee);color:#fff;font-size:20px;margin:6px 8px 6px 0;vertical-align:middle}
 .seek{width:60%;vertical-align:middle;accent-color:#22d3ee}
 .dl{color:#22d3ee;text-decoration:none;font-size:14px}
-pre{background:#000;padding:10px;border-radius:8px;overflow:auto;max-height:220px;font-size:12px}.tabs{display:flex;gap:8px;margin:12px 0;position:sticky;top:0;background:#111;padding:8px 0;z-index:5}.tab{flex:1;padding:12px;border-radius:8px;border:1px solid #444;background:#1c1c1c;color:#eee;font-size:15px;text-align:center;cursor:pointer}.tab.on{background:#7c3aed;border-color:#7c3aed}.tabradio{position:absolute;opacity:0;pointer-events:none}#pane1,#pane2,#pane3,#pane4{display:none}#t1:checked~#pane1,#t2:checked~#pane2,#t3:checked~#pane3,#t4:checked~#pane4{display:block}#t1:checked~.tabs label[for="t1"],#t2:checked~.tabs label[for="t2"],#t3:checked~.tabs label[for="t3"]{background:#7c3aed;border-color:#7c3aed}#t4:checked~.tabs label[for="t4"]{background:#7c3aed;border-color:#7c3aed}
+pre{background:#000;padding:10px;border-radius:8px;overflow:auto;max-height:220px;font-size:12px}.tabs{display:flex;gap:8px;margin:12px 0;position:sticky;top:0;background:#111;padding:8px 0;z-index:5}.tab{flex:1;padding:12px;border-radius:8px;border:1px solid #444;background:#1c1c1c;color:#eee;font-size:15px;text-align:center;cursor:pointer;text-decoration:none;display:block}.tab.on{background:#7c3aed;border-color:#7c3aed}
 @media(max-width:640px){body{padding:12px}input,textarea,select{max-width:100%!important;box-sizing:border-box}button{margin:6px 4px 6px 0}.grid{grid-template-columns:1fr 1fr}.tab{font-size:13px;padding:10px 4px}}.pill{display:inline-flex;align-items:center;gap:7px;font-size:12px;color:#888;background:#1c1c1c;border:1px solid #333;border-radius:20px;padding:6px 12px}.dot{width:8px;height:8px;border-radius:50%;background:#22c55e}</style></head>
 <body><h2>&#127926; FORGETITLE</h2>
 <!--MSG-->
-<input type="radio" name="ftab" id="t1" class="tabradio" checked><input type="radio" name="ftab" id="t2" class="tabradio"><input type="radio" name="ftab" id="t3" class="tabradio"><input type="radio" name="ftab" id="t4" class="tabradio">
-<div class="tabs"><label for="t1" id="tb1" class="tab" onclick="tab(1)">1 · Runs</label><label for="t2" id="tb2" class="tab" onclick="tab(2)">2 · Dataset studio</label><label for="t3" id="tb3" class="tab" onclick="tab(3)">3 · Training</label><label for="t4" id="tb4" class="tab" onclick="tab(4)">4 · Logs</label></div>
+<div class="tabs"><a class="tabTAB1ON" href="/?tab=1">1 · Runs</a><a class="tabTAB2ON" href="/?tab=2">2 · Dataset studio</a><a class="tabTAB3ON" href="/?tab=3">3 · Training</a><a class="tabTAB4ON" href="/?tab=4">4 · Logs</a></div>
 <!--REFRESH-->
-<div id="pane1"><h3>Runs</h3>
+<!--PANE1--><h3>Runs</h3>
 <div id="runs"></div><!--STATIC_RUNS-->
 <form method="POST" action="/create_run"><div class="ckpt">new: <input name="name" placeholder="artist_name" style="width:180px;background:#000;color:#eee;border:1px solid #444;border-radius:6px;padding:8px"> <button style="padding:8px 16px;border-radius:6px;border:0;background:#7c3aed;color:#fff">Create</button> <span class="muted">then set its trigger below</span></div></form>
-</div>
-<div id="pane2"><h3>Dataset studio <span class="muted" id="ds_run"></span></h3>
+<!--ENDPANE1-->
+<!--PANE2--><h3>Dataset studio <span class="muted" id="ds_run"></span></h3>
 <div class="ckpt"><span class="muted" id="ds_count"></span></div>
 <form method="POST" action="/upload_audio" enctype="multipart/form-data"><div class="ckpt">songs + lyrics files — pick many at once. audio (wav/flac/ogg/mp3/m4a/webm) converts to flac; a matching <b>songname.txt</b> auto-fills that song's lyrics<br><input type="file" name="audio" multiple accept="audio/*,.wav,.flac,.ogg,.mp3,.m4a,.webm,.txt"> <button style="padding:8px 16px;border-radius:6px;border:0;background:#7c3aed;color:#fff">Upload</button></div></form>
 <div id="songs"></div><!--STATIC_SONGS-->
-</div>
-<div id="pane3"><!--STATIC_STATUS-->
+<!--ENDPANE2-->
+<!--PANE3--><!--STATIC_STATUS-->
 <iframe src="/live-mini" style="width:100%;height:118px;border:1px solid #2C2C2C;border-radius:10px;overflow:hidden" scrolling="no" title="live progress"></iframe>
 <h3>Loss graph</h3><!--LOSSGRAPH-->
 <div class="bar"><div class="fill" id="fill" style="width:FILLPCT%"></div></div>
 <div id="pct" class="muted"></div>
-</div>
+
 
 <div class="grid">
 <div class="card">step<div><b id="step">-</b> / 1600</div></div>
@@ -82,8 +81,9 @@ pre{background:#000;padding:10px;border-radius:8px;overflow:auto;max-height:220p
 
 <div class="muted">V1</div>
 </div>
-<div id="pane4"><h3>Log tail</h3><pre id="log">STATICLOG</pre>
-</div>
+<!--ENDPANE3-->
+<!--PANE4--><h3>Log tail</h3><pre id="log">STATICLOG</pre>
+<!--ENDPANE4-->
 <script>
 let songsDirty=false;
 
@@ -112,7 +112,6 @@ a.onended=()=>{btn.textContent='\u25B6';};
 seek.oninput=()=>{a.currentTime=seek.value;};
 players[key]={audio:a};btn.textContent='\u23F8';a.play();
 }catch(e){btn.textContent='\u25B6';document.getElementById('t'+key).textContent='load failed, retry';}}
-function tab(n){for(let i=1;i<=4;i++){document.getElementById('pane'+i).style.display=i===n?'block':'none';document.getElementById('tb'+i).className='tab'+(i===n?' on':'');}}
 let lastSig='';
 
 async function tick(){try{const r=await fetch('/api',{cache:'no-store'});if(!r.ok)throw new Error('http '+r.status);const d=await r.json();
@@ -154,7 +153,7 @@ const aud=x.audio?'<audio controls preload="none" style="width:100%" src="/a/'+d
 q+='<div class="ckpt"><b>'+x.name+'</b> '+(x.audio?'<span class="muted">'+x.audio.mb+' MB flac</span>':'<span class="muted">no audio</span>')+' '+(ok?'\u2714 ready':'<span style="color:#f59e0b">'+x.issues.join('; ')+'</span>')+(x.notes&&x.notes.length?'<br><span class="muted">note: '+x.notes.join('; ')+'</span>':'')+'<br>'+aud+'<form method="POST" action="/save_song"><input type="hidden" name="name" value="'+x.name+'">style / caption<br><input name="style" value="'+esc(x.style)+'" style="width:100%;background:#000;color:#eee;border:1px solid #444;border-radius:6px;padding:8px"><br>lyrics<br><textarea name="lyrics" rows="6" style="width:100%;background:#000;color:#eee;border:1px solid #444;border-radius:6px;padding:8px">'+esc(x.lyrics)+'</textarea><br><button>Save song</button></form><form method="POST" action="/delete_song"><input type="hidden" name="name" value="'+x.name+'"><button>Delete</button></form></div>';}
 document.getElementById('songs').innerHTML=q;}}
 
-}catch(e){document.getElementById('pct').textContent='connection error ('+e.message+'), retrying...';}}tick();setInterval(tick,3000);tab(1);</script></body></html>"""
+}catch(e){document.getElementById('pct').textContent='connection error ('+e.message+'), retrying...';}}tick();setInterval(tick,3000);</script></body></html>"""
 
 def snapshot():
     d = {"step": 0, "pct": 0.0, "phase": "starting", "loss": "-", "artist_eval": "-",
@@ -600,14 +599,6 @@ class H(http.server.BaseHTTPRequestHandler):
             self.send_header("Content-Length", str(len(b)))
             self.end_headers()
             self.wfile.write(b)
-        elif self.path.split("?", 1)[0] == "/testtabs":
-            tp = """<!DOCTYPE html><html><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><style>body{background:#111;color:#eee;font-family:sans-serif;padding:20px}.tabradio{position:absolute;opacity:0}#pa,#pb{display:none}#a:checked~#pa,#b:checked~#pb{display:block}label{padding:10px 20px;background:#333;border-radius:8px;margin-right:8px}#a:checked~* label[for="a"],#b:checked~* label[for="b"]{background:purple}</style></head><body><input type="radio" name="t" id="a" class="tabradio" checked><input type="radio" name="t" id="b" class="tabradio"><label for="a">SHOW-A</label><label for="b">SHOW-B</label><div id="pa"><h2>PANE A VISIBLE</h2></div><div id="pb"><h2>PANE B VISIBLE</h2></div><p>If tapping SHOW-B still shows A, your browser cannot do CSS tabs.</p></body></html>"""
-            b = tp.encode()
-            self.send_response(200)
-            self.send_header("Content-Type", "text/html")
-            self.send_header("Content-Length", str(len(b)))
-            self.end_headers()
-            self.wfile.write(b)
         elif self.path.split("?", 1)[0] == "/confirm_delete":
             import urllib.parse as _uq2
             q = self.path.split("?", 1)[1] if "?" in self.path else ""
@@ -683,6 +674,11 @@ class H(http.server.BaseHTTPRequestHandler):
             b = b.replace('<b id="step">-</b>', f"<b id=\"step\">{d['step_est']}</b>").replace('<b id="phase">-</b>', f"<b id=\"phase\">{d['phase']}</b>").replace('<b id="loss">-</b>', f"<b id=\"loss\">{d['loss']}</b>").replace('<b id="eval">-</b>', f"<b id=\"eval\">{d['artist_eval']}</b>").replace('<b id="mval">-</b>', f"<b id=\"mval\">{d['minted_eval']}</b>")
             b = b.replace('<b id="eta">-</b>', f"<b id=\"eta\">{d['eta']}</b>")
             b = b.replace("FORGETITLE", _h.escape(os.environ.get("FORGE_TITLE", "YuE2-forge LoRA training")))
+            for _i in (1, 2, 3, 4):
+                if str(_i) != tab:
+                    b = re.sub(rf"<!--PANE{_i}-->.*?<!--ENDPANE{_i}-->", "", b, flags=re.S)
+                b = b.replace(f"<!--PANE{_i}-->", "").replace(f"<!--ENDPANE{_i}-->", "")
+                b = b.replace(f"TAB{_i}ON", " on" if str(_i) == tab else "")
             b = b.replace("CFGSTYLE", _h.escape(d["cfg"].get("style", ""), quote=True)).replace("CFGLYRICS", _h.escape(d["cfg"].get("lyrics", ""), quote=False)).replace('value="CFGSEED"', f"value=\"{d['cfg'].get('seed', 12)}\"").replace("WALKCHECKED", " checked" if d["cfg"].get("walk") else "")
             b = b.replace("STATICLOG", _h.escape(d["log_tail"] or "no log yet", quote=False))
             b = b.encode()
