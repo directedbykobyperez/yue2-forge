@@ -38,7 +38,7 @@ pre{background:#000;padding:10px;border-radius:8px;overflow:auto;max-height:220p
 <body><h2>&#127926; FORGETITLE</h2>
 <!--MSG-->
 <input type="radio" name="ftab" id="t1" class="tabradio" checked><input type="radio" name="ftab" id="t2" class="tabradio"><input type="radio" name="ftab" id="t3" class="tabradio"><input type="radio" name="ftab" id="t4" class="tabradio">
-<div class="tabs"><label for="t1" id="tb1" class="tab on" onclick="tab(1)">1 · Runs</label><label for="t2" id="tb2" class="tab" onclick="tab(2)">2 · Dataset studio</label><label for="t3" id="tb3" class="tab" onclick="tab(3)">3 · Training</label><label for="t4" id="tb4" class="tab" onclick="tab(4)">4 · Logs</label></div>
+<div class="tabs"><label for="t1" id="tb1" class="tab" onclick="tab(1)">1 · Runs</label><label for="t2" id="tb2" class="tab" onclick="tab(2)">2 · Dataset studio</label><label for="t3" id="tb3" class="tab" onclick="tab(3)">3 · Training</label><label for="t4" id="tb4" class="tab" onclick="tab(4)">4 · Logs</label></div>
 <!--REFRESH-->
 <div id="pane1"><h3>Runs</h3>
 <div id="runs"></div><!--STATIC_RUNS-->
