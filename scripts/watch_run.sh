@@ -12,7 +12,7 @@ SCRIPT_DIR="$(cd "$(dirname "$0")" && pwd)"
 cd "$SCRIPT_DIR"
 
 train_pid() { pgrep -f "ar_lora_" | head -1; }
-have_sample() { ls $GEN/${RUN_NAME:-my_lora}_s$1.mp3 $GEN/${RUN_NAME:-my_lora}_s$1.flac >/dev/null 2>&1; }
+have_sample() { [ -f $GEN/${RUN_NAME:-my_lora}_s$1.done ]; }
 
 sample_step() {
   local t=$1; export CKSTEP=$t
@@ -42,17 +42,57 @@ sample_step() {
       sleep 10
     done
   fi
-  SEED=12
+  RN=${RUN_NAME:-my_lora}
+  NP=0
   if [ -f /workspace/sample_cfg.json ]; then
-    SEED=$(python3 -c "import json; c=json.load(open('/workspace/sample_cfg.json')); b=int(c.get('seed',12)); print(b + int(__import__('os').environ.get('CKSTEP','0'))//200 if c.get('walk') else b)" 2>/dev/null || echo 12)
+    /workspace/yue2venv/bin/python - "$GEN/$RN" "$t" > /workspace/prompts_$t.txt << "PYEOF2"
+import json, sys
+gen, t = sys.argv[1], sys.argv[2]
+try:
+    cfg = json.load(open("/workspace/sample_cfg.json"))
+except Exception:
+    cfg = {}
+prompts = cfg.get("prompts") or []
+walk = bool(cfg.get("walk"))
+for i, pr in enumerate(prompts[:4]):
+    seed = int(pr.get("seed", 12) or 12)
+    if walk:
+        seed += int(t) // 200
+    with open(f"{gen}/_p{i}.style.txt", "w") as f:
+        f.write(pr.get("style", ""))
+    with open(f"{gen}/_p{i}.lyrics.txt", "w") as f:
+        f.write(pr.get("lyrics", ""))
+    print(f"{i} {seed}")
+PYEOF2
+    NP=$(wc -l < /workspace/prompts_$t.txt)
   fi
-  echo "[watcher] sampling with seed $SEED" >> /workspace/watcher.log
-  /workspace/yue2venv/bin/python -u "$SCRIPT_DIR/ar_generate.py" \
-    $OUT/step-$t.pt $NAR ${RUN_NAME:-my_lora}_s$t $STYLE $LYR "$SEED" >> /workspace/gen.log 2>&1
-  if [ -f $GEN/${RUN_NAME:-my_lora}_s$t.flac ]; then
-    ffmpeg -y -v error -i $GEN/${RUN_NAME:-my_lora}_s$t.flac -codec:a libmp3lame -qscale:a 4 \
-      $GEN/${RUN_NAME:-my_lora}_s$t.mp3 2>>/workspace/gen.log || true
+  if [ "$NP" -eq 0 ]; then
+    rm -f /workspace/prompts_$t.txt
+    SEED_FALLBACK=12
+    if [ -f /workspace/sample_cfg.json ]; then
+      SEED_FALLBACK=$(python3 -c "import json; print(int(json.load(open('/workspace/sample_cfg.json')).get('seed',12)))" 2>/dev/null || echo 12)
+    fi
+    echo "[watcher] single legacy sample, seed $SEED_FALLBACK" >> /workspace/watcher.log
+    /workspace/yue2venv/bin/python -u "$SCRIPT_DIR/ar_generate.py" \
+      $OUT/step-$t.pt $NAR ${RN}_s$t $STYLE $LYR "$SEED_FALLBACK" >> /workspace/gen.log 2>&1
+    if [ -f $GEN/${RN}_s$t.flac ]; then
+      ffmpeg -y -v error -i $GEN/${RN}_s$t.flac -codec:a libmp3lame -qscale:a 4 \
+        $GEN/${RN}_s$t.mp3 2>>/workspace/gen.log || true
+    fi
+  else
+    while read -r i seed; do
+      lyr="$GEN/_p$i.lyrics.txt"
+      echo "[watcher] sampling step-$t prompt $i seed $seed" >> /workspace/watcher.log
+      /workspace/yue2venv/bin/python -u "$SCRIPT_DIR/ar_generate.py" \
+        $OUT/step-$t.pt $NAR ${RN}_s${t}p$i "@$GEN/_p$i.style.txt" "$lyr" "$seed" >> /workspace/gen.log 2>&1
+      if [ -f $GEN/${RN}_s${t}p$i.flac ]; then
+        ffmpeg -y -v error -i $GEN/${RN}_s${t}p$i.flac -codec:a libmp3lame -qscale:a 4 \
+          $GEN/${RN}_s${t}p$i.mp3 2>>/workspace/gen.log || true
+      fi
+    done < /workspace/prompts_$t.txt
   fi
+  rm -f $GEN/_p*.style.txt $GEN/_p*.lyrics.txt /workspace/prompts_$t.txt
+  touch $GEN/${RN}_s$t.done
   # automatic: every sampled checkpoint also lands as .safetensors (user-facing format)
   /workspace/yue2venv/bin/python "$SCRIPT_DIR/export_safetensors.py" $OUT/step-$t.pt >> /workspace/gen.log 2>&1 || true
   echo "[watcher] sample step-$t done" >> /workspace/watcher.log
@@ -74,10 +114,11 @@ while true; do
       break
     fi
     echo "{\"phase\": \"training\"}" > /workspace/ui/state.json
-    START_STEP=$latest nohup /workspace/yue2venv/bin/python -u ar_lora_cont.py \
-      ${RUN_NAME:-my_lora} $((TOTAL_STEPS-latest)) 64 0.5 $OUT/step-$latest.pt 1e-4 0.08 \
+    RRANK=$(python3 -c "import json; print(json.load(open('/workspace/runs/${RUN_NAME:-my_lora}/config.json')).get('last_rank', 64))" 2>/dev/null || echo 64)
+    START_STEP=$latest nohup /workspace/yue2venv/bin/python -u "$SCRIPT_DIR/ar_train.py" \
+      ${RUN_NAME:-my_lora} $((TOTAL_STEPS-latest)) $RRANK 0.5 $OUT/step-$latest.pt 1e-4 0.08 \
       >> /workspace/ar_train.log 2>&1 &
-    echo "[watcher] resumed from $latest pid $!" >> /workspace/watcher.log
+    echo "[watcher] resumed from $latest rank $RRANK pid $!" >> /workspace/watcher.log
   fi
   sleep 30
 done

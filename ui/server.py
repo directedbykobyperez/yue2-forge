@@ -6,7 +6,7 @@ OUT = os.environ.get("FORGE_OUT", "/workspace/tok/full/my_lora")
 GEN = os.environ.get("FORGE_GEN", "/workspace/tok/full/gen")
 LOG = os.environ.get("FORGE_LOG", "/workspace/ar_train.log")
 STATE = os.environ.get("FORGE_STATE", "/workspace/ui/state.json")
-CFG = "/workspace/sample_cfg.json"
+CFG = os.environ.get("FORGE_CFG", "/workspace/sample_cfg.json")
 STYLE_FILE = "/workspace/real/artist/sample.txt"
 LYR_FILE = "/workspace/sample_lyrics.txt"
 TOTAL = int(os.environ.get("FORGE_TOTAL", "1600"))
@@ -90,13 +90,11 @@ input,textarea,select{font-size:14px}
 <h3>Samples (your custom prompt below)</h3>
 <!--STATIC_SAMPLES-->
 <div id="samples"></div>
-<h3>Next sample prompt</h3>
+<h3>Sample prompts <span class="muted">(up to 4 — one render each per checkpoint)</span></h3>
 <form method="POST" action="/save_cfg">
-<div class="ckpt">
-Style<br><input id="f_style" name="style" value="CFGSTYLE" style="width:100%;background:#000;color:#eee;border:1px solid #444;border-radius:6px;padding:8px"><br><br>
-Lyrics<br><textarea id="f_lyr" name="lyrics" rows="9" style="width:100%;background:#000;color:#eee;border:1px solid #444;border-radius:6px;padding:8px">CFGLYRICS</textarea><br><br>
-Seed <input id="f_seed" name="seed" value="CFGSEED" type="number" style="width:100px;background:#000;color:#eee;border:1px solid #444;border-radius:6px;padding:8px"> <label class="muted"><input type="checkbox" name="walk" value="1"WALKCHECKED> walk seed per checkpoint</label>
-<button style="padding:8px 16px;border-radius:6px;border:0;background:#E50914;color:#fff">Save</button></div></form>
+<!--STATIC_PROMPTS-->
+<div class="ckpt"><label class="muted"><input type="checkbox" name="walk" value="1"WALKCHECKED> walk seed per checkpoint</label>
+<button style="padding:8px 16px;border-radius:6px;border:0;background:#E50914;color:#fff">Save prompts</button></div></form>
 <div id="ckpts"></div>
 <h3>Downloads</h3><!--STATIC_FILES--><div id="dl"></div>
 
@@ -116,7 +114,6 @@ Seed <input id="f_seed" name="seed" value="CFGSEED" type="number" style="width:1
 <div class="muted">V1</div>
 </aside></div>
 <script>
-let dirty=false;for(const id of ['f_style','f_lyr','f_seed']){document.getElementById(id).addEventListener('input',()=>dirty=true);}
 let songsDirty=false;
 
 
@@ -127,23 +124,23 @@ let songsDirty=false;
 
 
 const players={};
-async function togglePlay(step,file,btn){
-let p=players[step];
+async function togglePlay(key,file,btn){
+let p=players[key];
 if(p&&p.audio){if(p.audio.paused){p.audio.play();btn.textContent='\u23F8';}else{p.audio.pause();btn.textContent='\u25B6';}return;}
 btn.textContent='\u2026';
 try{const r=await fetch('/m/'+file);const total=+r.headers.get('Content-Length')||0;
-const rd=r.body.getReader();const chunks=[];let got=0;const bar=document.getElementById('bar'+step);
+const rd=r.body.getReader();const chunks=[];let got=0;const bar=document.getElementById('bar'+key);
 while(true){const n=await rd.read();if(n.done)break;chunks.push(n.value);got+=n.value.length;
 if(total)bar.style.width=(100*got/total)+'%';}
 const a=new Audio(URL.createObjectURL(new Blob(chunks,{type:'audio/mpeg'})));
-const seek=document.getElementById('seek'+step),t=document.getElementById('t'+step);
+const seek=document.getElementById('seek'+key),t=document.getElementById('t'+key);
 const fmt=v=>{v=Math.max(0,v||0);return Math.floor(v/60)+':'+String(Math.floor(v%60)).padStart(2,'0');};
 a.onloadedmetadata=()=>{seek.max=a.duration;t.textContent='0:00 / '+fmt(a.duration);};
 a.ontimeupdate=()=>{if(document.activeElement!==seek)seek.value=a.currentTime;t.textContent=fmt(a.currentTime)+' / '+fmt(a.duration);};
 a.onended=()=>{btn.textContent='\u25B6';};
 seek.oninput=()=>{a.currentTime=seek.value;};
-players[step]={audio:a};btn.textContent='\u23F8';a.play();
-}catch(e){btn.textContent='\u25B6';document.getElementById('t'+step).textContent='load failed, retry';}}
+players[key]={audio:a};btn.textContent='\u23F8';a.play();
+}catch(e){btn.textContent='\u25B6';document.getElementById('t'+key).textContent='load failed, retry';}}
 function tab(n){for(let i=1;i<=3;i++){document.getElementById('pane'+i).style.display=i===n?'block':'none';document.getElementById('tb'+i).className='tab'+(i===n?' on':'');}}
 let lastSig='';
 
@@ -163,7 +160,7 @@ let r='';for(const x of d.runs.runs){const act=x.name===d.runs.active;
 r+='<div class="ckpt">'+(act?'<b>'+x.name+' (active)</b>': '<b>'+x.name+'</b> <form method="POST" action="/switch_run" style="display:inline"><input type="hidden" name="name" value="'+x.name+'"><button>Switch</button></form>')+' <span class="muted">'+x.ready+'/'+x.total+' songs'+(x.ckpts.length?' | ckpts '+x.ckpts.join(','):'')+(x.best?' | best ✔':'')+'</span> <a href="/confirm_delete?run='+x.name+'" style="color:#f87171;text-decoration:none;font-size:18px" title="delete run">✕</a><br><form method="POST" action="/set_trigger">trigger: <input name="trigger" value="'+x.trigger+'" placeholder="empty = caption-only" style="width:160px;background:#000;color:#eee;border:1px solid #444;border-radius:6px;padding:8px"><input type="hidden" name="run" value="'+x.name+'"> caption: <select name="template"><option value="full"'+(x.template!=='short'?' selected':'')+'>trigger, in the style of…</option><option value="short"'+(x.template==='short'?' selected':'')+'>trigger, caption</option></select> <button>Save</button></form></div>';}
 document.getElementById('runs').innerHTML=r||'<div class="muted">no runs yet — create one below</div>';
 let s='';if(d.samples.length==0){s='no samples yet - first one lands at step 600';}
-for(const x of d.samples){s+='<div class="ckpt"><b>step '+x.step+'</b> <span class="muted">'+x.secs+'s</span><br><button class="play" onclick="togglePlay('+x.step+',\''+x.file+'\',this)">\u25B6</button><input class="seek" type="range" id="seek'+x.step+'" value="0" step="0.1"> <span id="t'+x.step+'" class="muted">0:00</span><div class="bar" style="height:6px"><div class="fill" id="bar'+x.step+'"></div></div><a class="dl" href="/m/'+x.file+'" download="'+x.file+'">\u2B07 Download MP3</a></div>';}
+for(const x of d.samples){const k=x.step+'p'+x.p;const pl=x.p>=0?' · prompt '+(x.p+1):'';s+='<div class="ckpt"><b>step '+x.step+pl+'</b> <span class="muted">'+x.secs+'s</span><br><button class="play" onclick="togglePlay(\''+k+'\',\''+x.file+'\',this)">\u25B6</button><input class="seek" type="range" id="seek'+k+'" value="0" step="0.1"> <span id="t'+k+'" class="muted">0:00</span><div class="bar" style="height:6px"><div class="fill" id="bar'+k+'"></div></div><a class="dl" href="/m/'+x.file+'" download="'+x.file+'">\u2B07 Download MP3</a></div>';}
 document.getElementById('samples').innerHTML=s;
 let c='';if(d.checkpoints.length==0){c='none yet';}
 for(const x of d.checkpoints){c+='<div class="ckpt">step-'+x.step+' <span class="muted">'+x.mb+' MB'+(x.sampled?' - sampled &#9989;':'')+'</span></div>';}
@@ -185,7 +182,7 @@ const esc=s=>String(s).replace(/&/g,'&amp;').replace(/"/g,'&quot;').replace(/</g
 const aud=x.audio?'<audio controls preload="none" style="width:100%" src="/a/'+d.studio.run+'/'+x.audio.file+'"></audio><br>':'';
 q+='<div class="ckpt"><b>'+x.name+'</b> '+(x.audio?'<span class="muted">'+x.audio.mb+' MB flac</span>':'<span class="muted">no audio</span>')+' '+(ok?'\u2714 ready':'<span style="color:#f59e0b">'+x.issues.join('; ')+'</span>')+(x.notes&&x.notes.length?'<br><span class="muted">note: '+x.notes.join('; ')+'</span>':'')+'<br>'+aud+'<form method="POST" action="/save_song"><input type="hidden" name="name" value="'+x.name+'">style / caption<br><input name="style" value="'+esc(x.style)+'" style="width:100%;background:#000;color:#eee;border:1px solid #444;border-radius:6px;padding:8px"><br>lyrics<br><textarea name="lyrics" rows="6" style="width:100%;background:#000;color:#eee;border:1px solid #444;border-radius:6px;padding:8px">'+esc(x.lyrics)+'</textarea><br><button>Save song</button></form><form method="POST" action="/delete_song"><input type="hidden" name="name" value="'+x.name+'"><button>Delete</button></form></div>';}
 document.getElementById('songs').innerHTML=q;}}
-if(!dirty&&d.cfg){document.getElementById('f_style').value=d.cfg.style;document.getElementById('f_lyr').value=d.cfg.lyrics;document.getElementById('f_seed').value=d.cfg.seed;}
+
 }catch(e){document.getElementById('pct').textContent='connection error ('+e.message+'), retrying...';}}tick();setInterval(tick,3000);tab(1);</script></body></html>"""
 
 def snapshot():
@@ -244,16 +241,17 @@ def snapshot():
             d["checkpoints"].append({"step": s, "mb": round(os.path.getsize(f) / 2**20),
                 "sampled": bool(glob.glob(os.path.join(GEN, active_run() + f"_s{s}.*")))})
     for f in sorted(glob.glob(os.path.join(GEN, active_run() + "_s*.mp3"))) + sorted(glob.glob(os.path.join(GEN, active_run() + "_s*.flac"))):
-        m = re.search(sp + r"(\d+)", os.path.basename(f))
-        if m and not any(x["step"] == int(m.group(1)) for x in d["samples"]):
+        m = re.search(sp + r"(\d+)(?:p(\d+))?", os.path.basename(f))
+        if m and not any(x["file"] == os.path.basename(f) for x in d["samples"]):
             secs = ""
             try:
                 meta = json.load(open(os.path.splitext(f)[0] + ".json"))
                 secs = f"{meta.get('audio_seconds', 0):.0f}"
             except Exception:
                 pass
-            d["samples"].append({"step": int(m.group(1)), "file": os.path.basename(f), "secs": secs})
-    d["samples"].sort(key=lambda x: x["step"])
+            d["samples"].append({"step": int(m.group(1)), "p": int(m.group(2)) if m.group(2) is not None else -1,
+                                 "file": os.path.basename(f), "secs": secs})
+    d["samples"].sort(key=lambda x: (x["step"], x["p"]))
     for g, (dd, rx) in DL.items():
         dd = dl_resolve(dd)
         for f in sorted(glob.glob(os.path.join(dd, "*"))):
@@ -276,15 +274,27 @@ def snapshot():
         cfg = json.load(open(CFG))
     except Exception:
         cfg = {}
-    try:
-        st = open(STYLE_FILE, errors="replace").read().strip()
-    except Exception:
-        st = ""
-    try:
-        ly = open(LYR_FILE, errors="replace").read().strip()
-    except Exception:
-        ly = ""
-    d["cfg"] = {"style": st, "lyrics": ly, "seed": cfg.get("seed", 12)}
+    prompts = cfg.get("prompts")
+    if not isinstance(prompts, list) or not prompts:
+        try:
+            st0 = open(STYLE_FILE, errors="replace").read().strip()
+        except Exception:
+            st0 = ""
+        try:
+            ly0 = open(LYR_FILE, errors="replace").read().strip()
+        except Exception:
+            ly0 = ""
+        prompts = [{"style": st0, "lyrics": ly0, "seed": cfg.get("seed", 12)}] if (st0 or ly0) else []
+    clean = []
+    for p in prompts[:4]:
+        if isinstance(p, dict):
+            clean.append({"style": str(p.get("style", ""))[:1500],
+                          "lyrics": str(p.get("lyrics", ""))[:8000],
+                          "seed": int(p.get("seed", 12) or 12)})
+    d["cfg"] = {"prompts": clean, "walk": bool(cfg.get("walk")),
+                "style": clean[0]["style"] if clean else "",
+                "lyrics": clean[0]["lyrics"] if clean else "",
+                "seed": clean[0]["seed"] if clean else 12}
     d["studio"] = studio_snapshot()
     d["runs"] = runs_snapshot()
     d["prep"] = prep_status()
@@ -590,7 +600,7 @@ class H(http.server.BaseHTTPRequestHandler):
             self._send(os.path.join(repo, "assets", fn), "image/png")
         elif self.path.startswith("/m/"):
             fn = os.path.basename(self.path[3:])
-            if ".." in fn or not re.match(r"[A-Za-z0-9_]+_s\d+\.(mp3|flac)$", fn):
+            if ".." in fn or not re.match(r"[A-Za-z0-9_]+_s\d+(p\d+)?\.(mp3|flac)$", fn):
                 self.send_error(404)
                 return
             self._send(os.path.join(GEN, fn),
@@ -606,7 +616,8 @@ class H(http.server.BaseHTTPRequestHandler):
                 rows += f"<div class='ckpt'>step-{x['step']} <span class='muted'>{x['mb']} MB{' · sampled ✔' if x['sampled'] else ''}</span></div>"
             smp = ""
             for x in d["samples"]:
-                smp += f"<div class='ckpt'><b>step {x['step']}</b> <span class='muted'>{x['secs']}s</span> <a class='dl' href='/m/{x['file']}'>play/download</a></div>"
+                pl = f" · prompt {x['p'] + 1}" if x['p'] >= 0 else ""
+                smp += f"<div class='ckpt'><b>step {x['step']}{pl}</b> <span class='muted'>{x['secs']}s</span> <a class='dl' href='/m/{x['file']}'>play/download</a></div>"
             if mini:
                 page = f"""<!DOCTYPE html><html><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><meta http-equiv="refresh" content="20"><style>body{{background:#0D0D0D;color:#fff;font-family:system-ui,sans-serif;margin:0;padding:10px 12px}}a{{color:#FF6B60;font-size:12px}}.bar{{height:8px;background:#1E1E1E;border:1px solid #2C2C2C;border-radius:5px;overflow:hidden;margin:6px 0}}.fill{{height:100%;background:linear-gradient(90deg,#E50914,#FF3B30);width:{d['pct']}%}}.t{{font-size:14px}}.muted{{color:#A0A0A0;font-size:12px}}</style></head><body><div class="bar"><div class="fill"></div></div><div class="t">step {d['step_est']}/{TOTAL} ({d['pct']}%) · {d['phase']} · loss {d['loss']} · eval {d['artist_eval']}</div><div class="muted">auto-refreshes · {_t2.strftime('%H:%M:%S')}</div></body></html>"""
             else:
@@ -649,7 +660,8 @@ class H(http.server.BaseHTTPRequestHandler):
             st = f"<div class='muted'>SERVER { _t.strftime('%H:%M:%S') } · run {active_run()}: step {d['step']}/{TOTAL} ({d['pct']}%) | {d['phase']} | loss {d['loss']} | artist {d['artist_eval']} | minted {d['minted_eval']}</div>"
             ss = ""
             for x in d["samples"]:
-                ss += f"<div class='ckpt'><b>step {x['step']}</b> <span class='muted'>{x['secs']}s</span><br><audio controls preload='none' style='width:100%' src='/m/{x['file']}'></audio><br><a class='dl' href='/m/{x['file']}' download='{x['file']}'>Download MP3</a></div>"
+                pl = f" · prompt {x['p'] + 1}" if x['p'] >= 0 else ""
+                ss += f"<div class='ckpt'><b>step {x['step']}{pl}</b> <span class='muted'>{x['secs']}s</span><br><audio controls preload='none' style='width:100%' src='/m/{x['file']}'></audio><br><a class='dl' href='/m/{x['file']}' download='{x['file']}'>Download MP3</a></div>"
             ff = ""
             cur = None
             for x in d["files"]:
@@ -675,9 +687,15 @@ class H(http.server.BaseHTTPRequestHandler):
                 sw = "" if act else f"<form method='POST' action='/switch_run' style='display:inline'><input type='hidden' name='name' value='{x['name']}'><button>Switch</button></form>"
                 rs += f"<div class='ckpt'><b>{x['name']}</b>{' (active)' if act else ''} <span class='muted'>{x['ready']}/{x['total']} songs" + (f" | ckpts {','.join(map(str, x['ckpts']))}" if x["ckpts"] else "") + "</span> " + sw + f" <a href='/confirm_delete?run={x['name']}' style='color:#f87171;text-decoration:none;font-size:18px' title='delete run'>✕</a><br><form method='POST' action='/set_trigger'>trigger: <input name='trigger' value='{_h.escape(x['trigger'], quote=True)}' placeholder='empty = caption-only' style='width:160px;background:#000;color:#eee;border:1px solid #444;border-radius:6px;padding:8px'><input type='hidden' name='run' value='{x['name']}'> caption: <select name='template'><option value='full'{(' selected' if x['template'] != 'short' else '')}>trigger, in the style of…</option><option value='short'{(' selected' if x['template'] == 'short' else '')}>trigger, caption</option></select> <button>Save</button></form></div>"
             pp = f"<div class='muted'>prep: {d['prep'].get('stage', 'idle')} — {d['prep'].get('detail', '')}</div>"
+            pc = ""
+            plist = d["cfg"].get("prompts", [])
+            while len(plist) < 4:
+                plist = plist + [{"style": "", "lyrics": "", "seed": 12}]
+            for i, p in enumerate(plist[:4]):
+                pc += f"<div class='ckpt'><b>prompt {i + 1}</b><br>Style<br><input name='style_{i}' value='{_h.escape(p['style'], quote=True)}' style='width:100%;background:#000;color:#eee;border:1px solid #444;border-radius:6px;padding:8px'><br><br>Lyrics<br><textarea name='lyrics_{i}' rows='6' style='width:100%;background:#000;color:#eee;border:1px solid #444;border-radius:6px;padding:8px'>{_h.escape(p['lyrics'], quote=False)}</textarea><br><br>Seed <input name='seed_{i}' value='{p['seed']}' type='number' style='width:100px;background:#000;color:#eee;border:1px solid #444;border-radius:6px;padding:8px'></div>"
             g = d["gpu"]
             gp = (f"<div class='ckpt'><b>{_h.escape(g.get('name', 'GPU'))}</b><br><span class='muted'>🌡 {g.get('temp', '-')} · load {g.get('load', '-')} · {g.get('mem', '-')} ({g.get('mempct', 0)}%) · {g.get('pwr', '-')}</span></div>" if g else "<div class='muted'>no GPU visible</div>")
-            b = HTML.replace("<!--STATIC_STATUS-->", st).replace("<!--STATIC_SAMPLES-->", ss or "<div class='muted'>no samples yet</div>").replace("<!--STATIC_FILES-->", ff).replace("FILLPCT", str(d["pct"])).replace("<!--STATIC_SONGS-->", sg or "<div class='muted'>no songs yet</div>").replace("<!--STATIC_RUNS-->", rs or "<div class='muted'>no runs yet</div>").replace("<!--STATIC_PREP-->", pp).replace("<!--STATIC_GPU-->", gp).replace("<!--LOSSGRAPH-->", d["loss_svg"] or "<div class='muted'>no training data yet</div>")
+            b = HTML.replace("<!--STATIC_STATUS-->", st).replace("<!--STATIC_SAMPLES-->", ss or "<div class='muted'>no samples yet</div>").replace("<!--STATIC_FILES-->", ff).replace("FILLPCT", str(d["pct"])).replace("<!--STATIC_SONGS-->", sg or "<div class='muted'>no songs yet</div>").replace("<!--STATIC_RUNS-->", rs or "<div class='muted'>no runs yet</div>").replace("<!--STATIC_PREP-->", pp).replace("<!--STATIC_GPU-->", gp).replace("<!--LOSSGRAPH-->", d["loss_svg"] or "<div class='muted'>no training data yet</div>").replace("<!--STATIC_PROMPTS-->", pc)
             b = b.replace('class="tabradio" checked', 'class="tabradio"')
             b = b.replace(f'id="t{tab}" class="tabradio"', f'id="t{tab}" class="tabradio" checked')
             b = b.replace("<!--MSG-->", f"<div class='ckpt' style='border-color:#E50914'>{_h.escape(msg)}</div>" if msg else "")
@@ -765,24 +783,51 @@ class H(http.server.BaseHTTPRequestHandler):
         if c is None:
             return self._fail("bad request", "3")
         try:
-            style = str(c.get("style", "")).strip()[:1500]
-            lyrics = str(c.get("lyrics", "")).strip()[:8000]
-            try:
-                seed = int(str(c.get("seed", "")).strip() or 12)
-            except Exception:
-                seed = 12
-            if not style or not lyrics:
-                raise ValueError("style and lyrics required")
-            if not re.search(r"[a-z\[]", lyrics, re.I):
-                raise ValueError("lyrics look empty")
+            walk = bool(str(c.get("walk", "")).strip().lower() in ("1", "on", "true", "yes"))
+            raw_prompts = c.get("prompts")
+            if (not isinstance(raw_prompts, list) or not raw_prompts) and any(f"style_{i}" in c for i in range(4)):
+                raw_prompts = [{"style": c.get(f"style_{i}", ""), "lyrics": c.get(f"lyrics_{i}", ""),
+                                "seed": c.get(f"seed_{i}", 12)} for i in range(4)]
+            prompts = []
+            if isinstance(raw_prompts, list) and raw_prompts:
+                for p in raw_prompts[:4]:
+                    st = str(p.get("style", "")).strip()[:1500]
+                    ly = str(p.get("lyrics", "")).strip()[:8000]
+                    if not st or not ly:
+                        continue
+                    try:
+                        sd = int(str(p.get("seed", "")).strip() or 12)
+                    except Exception:
+                        sd = 12
+                    prompts.append({"style": st, "lyrics": ly, "seed": sd})
+                if not prompts:
+                    raise ValueError("at least one complete prompt required")
+            else:
+                style = str(c.get("style", "")).strip()[:1500]
+                lyrics = str(c.get("lyrics", "")).strip()[:8000]
+                try:
+                    seed = int(str(c.get("seed", "")).strip() or 12)
+                except Exception:
+                    seed = 12
+                if not style or not lyrics:
+                    raise ValueError("style and lyrics required")
+                if not re.search(r"[a-z\[]", lyrics, re.I):
+                    raise ValueError("lyrics look empty")
+                prompts = [{"style": style, "lyrics": lyrics, "seed": seed}]
         except Exception as e:
             return self._fail(e, "3")
-        os.makedirs(os.path.dirname(STYLE_FILE) or ".", exist_ok=True)
-        walk = bool(str(c.get("walk", "")).strip().lower() in ("1", "on", "true", "yes"))
-        open(STYLE_FILE, "w").write(style + "\n")
-        open(LYR_FILE, "w").write(lyrics + "\n")
-        json.dump({"seed": seed, "walk": walk}, open(CFG, "w"))
-        return self._ok({"ok": True, "msg": "sample prompt saved"}, "3")
+        try:
+            os.makedirs(os.path.dirname(STYLE_FILE) or ".", exist_ok=True)
+            open(STYLE_FILE, "w").write(prompts[0]["style"] + "\n")
+            open(LYR_FILE, "w").write(prompts[0]["lyrics"] + "\n")
+        except Exception:
+            pass
+        try:
+            os.makedirs(os.path.dirname(CFG) or ".", exist_ok=True)
+            json.dump({"seed": prompts[0]["seed"], "walk": walk, "prompts": prompts}, open(CFG, "w"))
+        except Exception as e:
+            return self._fail(f"cannot save prompt config: {e}", "3")
+        return self._ok({"ok": True, "msg": f"{len(prompts)} sample prompt(s) saved"}, "3")
     def _post_save_song(self):
         c = self._fields()
         if c is None:

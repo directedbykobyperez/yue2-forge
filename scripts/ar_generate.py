@@ -34,7 +34,8 @@ with torch.no_grad():
     else: print("NAR: stock (no LoRA)", flush=True)
 model.eval(); print("LoRAs loaded", flush=True)
 import re
-cap=open(f"/workspace/real/artist/{STYLE_TRACK}.txt").read().split("===LYRICS===")[0].replace("Global Metadata:","").strip(); style=" ".join(cap.split())[:1500]
+cap_path = STYLE_TRACK[1:] if STYLE_TRACK.startswith("@") else f"/workspace/real/artist/{STYLE_TRACK}.txt"
+cap=open(cap_path).read().split("===LYRICS===")[0].replace("Global Metadata:","").strip(); style=" ".join(cap.split())[:1500]
 if os.environ.get("STRIP_TEMPO_KEY"): style=re.sub(r",?\s*\d+\s*BPM,?\s*(key of [A-G][#b]? ?(major|minor)?)?,?","",style).replace("  "," ")
 lyrics=open(LYR_FILE).read().strip()
 ABC_FILE=os.environ.get("ABC_FILE"); COT=os.environ.get("COT","off"); kw={}
