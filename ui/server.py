@@ -437,7 +437,7 @@ document.getElementById('prep_line').textContent='prep: '+d.prep.stage+' — '+d
 if(d.studio){document.getElementById('ds_run').textContent='run: '+d.studio.run;
 document.getElementById('ds_count').textContent=d.studio.ready+' / '+d.studio.total+' songs ready (need 7+)';
 
-if(!songsDirty){let q='';if(!d.studio.songs.length)q='<div class="muted">no songs yet — upload audio above, then add caption + lyrics per song</div>';
+if(!songsDirty){let q='';if(!d.studio.songs.length)q='<div class="muted">no songs yet - upload audio above, then add caption + lyrics per song</div>';
 for(const x of d.studio.songs){const ok=x.issues.length===0;
 const esc=s=>String(s).replace(/&/g,'&amp;').replace(/"/g,'&quot;').replace(/</g,'&lt;');
 const aud=x.audio?'<audio controls preload="none" style="width:100%" src="/a/'+d.studio.run+'/'+x.audio.file+'"></audio><br>':'';
