@@ -338,7 +338,7 @@ for(const x of d.studio.songs){const ok=x.issues.length===0;
 const esc=s=>String(s).replace(/&/g,'&amp;').replace(/"/g,'&quot;').replace(/</g,'&lt;');
 const aud=x.audio?'<audio controls preload="none" style="width:100%" src="/a/'+d.studio.run+'/'+x.audio.file+'"></audio><br>':'';
 // Combine style + lyrics into single textarea
-const combined=x.style+'\n'+x.lyrics;
+const combined=x.style+'\\n'+x.lyrics;
 q+='<div class="ckpt"><b>'+x.name+'</b> '+(x.audio?'<span class="muted">'+x.audio.mb+' MB flac</span>':'<span class="muted">no audio</span>')+' '+(ok?'\u2714 ready':'<span style="color:#f59e0b">'+x.issues.join('; ')+'</span>')+(x.notes&&x.notes.length?'<br><span class="muted">note: '+x.notes.join('; ')+'</span>':'')+'<br>'+aud+'<form method="POST" action="/save_song"><input type="hidden" name="name" value="'+x.name+'"><label class="muted" style="font-size:12px">caption + lyrics (first line = caption, then [Verse]/[Chorus] sections)</label><br><textarea name="content" rows="8" style="width:100%;background:#000;color:#eee;border:1px solid #444;border-radius:6px;padding:8px;font-family:monospace">'+esc(combined)+'</textarea><br><button>Save song</button></form><form method="POST" action="/delete_song"><input type="hidden" name="name" value="'+x.name+'"><button>Delete</button></form></div>';}
 document.getElementById('songs').innerHTML=q;}}
 
