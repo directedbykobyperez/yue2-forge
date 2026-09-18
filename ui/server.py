@@ -1809,7 +1809,9 @@ class H(http.server.BaseHTTPRequestHandler):
         t.start()
         return self._json({"ok": True, "job_id": job_id, "eta": "~60s"})
     def _post_delete_run(self):
-        if subprocess.run(["pgrep", "-f", "ar_train|ar_lora_"], capture_output=True).returncode == 0:
+        _train_check = subprocess.run(["pgrep", "-f", "ar_train|ar_lora_"], capture_output=True, text=True)
+        _train_pids = [p for p in _train_check.stdout.strip().split("\n") if p and p != str(os.getpid())]
+        if _train_pids:
             return self._fail("stop training first — refusing to delete under a live run", "1")
         c = self._fields()
         if c is None:
