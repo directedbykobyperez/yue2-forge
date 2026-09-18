@@ -43,7 +43,7 @@ pre{background:#000;padding:10px;border-radius:8px;overflow:auto;max-height:220p
 <body><div class="hdr"><h2>&#127926; FORGETITLE</h2><div id="gpu">
 <!--STATIC_GPU--></div></div>
 <!--MSG-->
-<div class="tabs"><a class="tab on" data-tab="1">1 · Runs</a><a class="tab" data-tab="2">2 · Dataset studio</a><a class="tab" data-tab="3">3 · Training</a><a class="tab" data-tab="4">4 · Logs</a></div>
+<div class="tabs"><a class="tab on" data-tab="1">1 · Runs</a><a class="tab" data-tab="2">2 · Dataset studio</a><a class="tab" data-tab="3">3 · Training</a><a class="tab" data-tab="4">4 · Logs</a><a class="tab" data-tab="5">5 · Generate</a></div>
 <div id="pane1" class="pane"><h3>Runs</h3>
 <div id="runs"></div><!--STATIC_RUNS-->
 <form method="POST" action="/create_run"><div class="ckpt">new: <input name="name" placeholder="artist_name" style="width:180px;background:#000;color:#eee;border:1px solid #444;border-radius:6px;padding:8px"> <button style="padding:8px 16px;border-radius:6px;border:0;background:#7c3aed;color:#fff">Create</button> <span class="muted">then set its trigger below</span></div></form>
@@ -153,6 +153,111 @@ async function resumeTrain(){
 </div>
 </div>
 <div id="pane4" class="pane" style="display:none"><h3>Log tail</h3><pre id="log">STATICLOG</pre></div>
+<div id="pane5" class="pane" style="display:none">
+<h3>Generate songs</h3>
+<div class="ckpt">
+<label class="muted">Select checkpoint</label><br>
+<select id="gen_ckpt" style="background:#000;color:#eee;border:1px solid #444;border-radius:6px;padding:8px;width:100%">
+<!--GEN_CKPTS-->
+</select>
+</div>
+<div class="ckpt">
+<label class="muted">Model precision</label><br>
+<select id="gen_precision" style="background:#000;color:#eee;border:1px solid #444;border-radius:6px;padding:8px;width:100%">
+<option value="bf16">BF16 (faster, needs more VRAM)</option>
+<option value="int8">INT8 (lower VRAM usage)</option>
+</select>
+</div>
+<div class="ckpt">
+<label class="muted">Style (caption)</label><br>
+<textarea id="gen_style" rows="3" style="width:100%;background:#000;color:#eee;border:1px solid #444;border-radius:6px;padding:8px;font-family:monospace" placeholder="In the style of Artist Name, genre tags..."></textarea>
+</div>
+<div class="ckpt">
+<label class="muted">Lyrics</label><br>
+<textarea id="gen_lyrics" rows="6" style="width:100%;background:#000;color:#eee;border:1px solid #444;border-radius:6px;padding:8px;font-family:monospace" placeholder="[Verse]
+Your lyrics here...
+[Chorus]
+More lyrics..."></textarea>
+</div>
+<div class="ckpt">
+<label class="muted">Seed</label><br>
+<input id="gen_seed" type="number" value="12" style="width:120px;background:#000;color:#eee;border:1px solid #444;border-radius:6px;padding:8px">
+<button onclick="startGenerate()" style="padding:8px 16px;border-radius:6px;border:0;background:#7c3aed;color:#fff;margin-left:8px">Generate</button>
+<span id="gen_status" class="muted" style="margin-left:8px"></span>
+</div>
+<div id="gen_progress" style="display:none" class="ckpt">
+<label class="muted">Generating...</label><br>
+<div class="bar"><div class="fill" id="gen_bar" style="width:0%"></div></div>
+<span id="gen_eta" class="muted"></span>
+</div>
+<h3>Generated songs</h3>
+<div id="gen_list"><!--GEN_LIST--></div>
+<script>
+async function loadGenCkpts(){
+  try{
+    const r=await fetch('/api');const d=await r.json();
+    const sel=document.getElementById('gen_ckpt');
+    sel.innerHTML='';
+    if(d.checkpoints&&d.checkpoints.length){
+      d.checkpoints.forEach(c=>{
+        const o=document.createElement('option');
+        o.value=c.pt;o.textContent='step-'+c.step+' ('+c.mb+' MB)';
+        sel.appendChild(o);
+      });
+    }else{
+      const o=document.createElement('option');o.value='';o.textContent='no checkpoints yet';
+      sel.appendChild(o);
+    }
+  }catch(e){}
+}
+async function loadGenList(){
+  try{
+    const r=await fetch('/gen_list');const d=await r.json();
+    const el=document.getElementById('gen_list');
+    if(!d.files||!d.files.length){el.innerHTML='<div class="muted">no generated songs yet</div>';return;}
+    el.innerHTML='';
+    d.files.forEach(f=>{
+      el.innerHTML+='<div class="ckpt" style="display:flex;align-items:center;gap:8px"><span style="flex:1">'+f.name+' <span class="muted">'+f.size+'</span></span><audio controls src="/gen/'+f.name+'" style="height:32px"></audio><a href="/gen/'+f.name+'" download style="color:#22d3ee">⬇</a></div>';
+    });
+  }catch(e){}
+}
+async function startGenerate(){
+  const ckpt=document.getElementById('gen_ckpt').value;
+  if(!ckpt){alert('select a checkpoint first');return;}
+  const style=document.getElementById('gen_style').value;
+  const lyrics=document.getElementById('gen_lyrics').value;
+  const seed=document.getElementById('gen_seed').value;
+  const precision=document.getElementById('gen_precision').value;
+  document.getElementById('gen_progress').style.display='block';
+  document.getElementById('gen_status').textContent='starting...';
+  try{
+    const r=await fetch('/generate',{method:'POST',headers:{'Content-Type':'application/json'},
+      body:JSON.stringify({ckpt,style,lyrics,seed:parseInt(seed)||12,precision})});
+    const d=await r.json();
+    if(d.error){document.getElementById('gen_status').textContent='error: '+d.error;return;}
+    document.getElementById('gen_status').textContent='generating... eta '+d.eta;
+    pollGen(d.job_id);
+  }catch(e){document.getElementById('gen_status').textContent='error: '+e.message;}
+}
+function pollGen(jobId){
+  const iv=setInterval(async()=>{
+    try{
+      const r=await fetch('/gen_status?job='+jobId);const d=await r.json();
+      if(d.done){
+        clearInterval(iv);
+        document.getElementById('gen_progress').style.display='none';
+        document.getElementById('gen_status').textContent=d.error?'error: '+d.error:'done!';
+        loadGenList();
+      }else{
+        document.getElementById('gen_bar').style.width=d.pct+'%';
+        document.getElementById('gen_eta').textContent=d.status+' · '+d.eta;
+      }
+    }catch(e){}
+  },3000);
+}
+loadGenCkpts();loadGenList();
+</script>
+</div>
 <script>
 let songsDirty=false;
 var activeTab=localStorage.getItem('forge_tab')||'1';
@@ -687,6 +792,40 @@ class H(http.server.BaseHTTPRequestHandler):
             self.send_header("Content-Length", str(len(b)))
             self.end_headers()
             self.wfile.write(b)
+        elif self.path == "/gen_list":
+            gen_dir = "/workspace/tok/full/gen"
+            files = []
+            if os.path.exists(gen_dir):
+                for f in sorted(os.listdir(gen_dir)):
+                    if f.endswith((".ogg", ".mp3", ".flac", ".wav")):
+                        sz = os.path.getsize(os.path.join(gen_dir, f))
+                        files.append({"name": f, "size": f"{sz/1024:.0f} KB"})
+            b = json.dumps({"files": files}).encode()
+            self.send_response(200)
+            self.send_header("Content-Type", "application/json")
+            self.send_header("Cache-Control", "no-store")
+            self.send_header("Content-Length", str(len(b)))
+            self.end_headers()
+            self.wfile.write(b)
+        elif self.path.startswith("/gen_status"):
+            import urllib.parse
+            params = urllib.parse.parse_qs(urllib.parse.urlparse(self.path).query)
+            job_id = params.get("job", [""])[0]
+            status_file = f"/workspace/gen_jobs/{job_id}.json"
+            if os.path.exists(status_file):
+                try:
+                    data = json.load(open(status_file))
+                except Exception:
+                    data = {"done": True, "error": "status file corrupted"}
+            else:
+                data = {"done": False, "pct": 0, "status": "waiting", "eta": "unknown"}
+            b = json.dumps(data).encode()
+            self.send_response(200)
+            self.send_header("Content-Type", "application/json")
+            self.send_header("Cache-Control", "no-store")
+            self.send_header("Content-Length", str(len(b)))
+            self.end_headers()
+            self.wfile.write(b)
         elif self.path == "/api":
             b = json.dumps(snapshot()).encode()
             self.send_response(200)
@@ -746,6 +885,14 @@ class H(http.server.BaseHTTPRequestHandler):
                 return
             self._send(os.path.join(GEN, fn),
                          "audio/mpeg" if fn.endswith(".mp3") else "audio/flac")
+        elif self.path.startswith("/gen/"):
+            fn = os.path.basename(self.path[5:])
+            if ".." in fn or not re.match(r".+\.(ogg|mp3|flac|wav)$", fn):
+                self.send_error(404)
+                return
+            gen_dir = "/workspace/tok/full/gen"
+            ctype = {"ogg": "audio/ogg", "mp3": "audio/mpeg", "flac": "audio/flac", "wav": "audio/wav"}.get(fn.rsplit(".", 1)[-1], "audio/ogg")
+            self._send(os.path.join(gen_dir, fn), ctype)
         elif self.path.split("?", 1)[0] in ("/live", "/live-mini"):
             import time as _t2, html as _h2
             d = snapshot()
@@ -890,6 +1037,8 @@ class H(http.server.BaseHTTPRequestHandler):
             return self._post_prepare_dataset()
         if path == "/delete_ckpt":
             return self._post_delete_ckpt()
+        if path == "/generate":
+            return self._post_generate()
         self.send_error(404)
     def _body(self, limit):
         try:
@@ -1353,6 +1502,74 @@ class H(http.server.BaseHTTPRequestHandler):
         except Exception as e:
             return self._fail(str(e), "3")
         return self._ok({"ok": True, "msg": f"deleted step-{step}.pt"}, "3")
+    def _post_generate(self):
+        import uuid, threading
+        c = self._fields()
+        if c is None:
+            return self._fail("bad request", "3")
+        ckpt = c.get("ckpt", "")
+        style = c.get("style", "")
+        lyrics = c.get("lyrics", "")
+        seed = int(c.get("seed", 12))
+        precision = c.get("precision", "int8")
+        if not ckpt:
+            return self._fail("select a checkpoint", "3")
+        if not os.path.exists(ckpt):
+            return self._fail(f"checkpoint not found: {ckpt}", "3")
+        job_id = str(uuid.uuid4())[:8]
+        job_dir = "/workspace/gen_jobs"
+        os.makedirs(job_dir, exist_ok=True)
+        job_file = os.path.join(job_dir, f"{job_id}.json")
+        json.dump({"done": False, "pct": 0, "status": "starting", "eta": "estimating..."}, open(job_file, "w"))
+        def run_gen():
+            try:
+                name = active_run()
+                nar = os.path.join("/workspace/tok/full", name, "joint_v1.pt")
+                if not os.path.exists(nar):
+                    nar = "none"
+                style_file = f"/workspace/gen_jobs/_style_{job_id}.txt"
+                lyr_file = f"/workspace/gen_jobs/_lyrics_{job_id}.txt"
+                open(style_file, "w").write(style)
+                open(lyr_file, "w").write(lyrics)
+                out_tag = f"gen_{job_id}"
+                json.dump({"done": False, "pct": 30, "status": "loading model", "eta": "~60s"}, open(job_file, "w"))
+                env = dict(os.environ, HF_HOME="/workspace/hf", VRAM_MODE=precision)
+                if precision == "int8":
+                    env["YUE2_MODEL"] = "/workspace/comfyui/yue2_3b_int8_convrot.safetensors"
+                repo = os.environ.get("FORGE_REPO", "/workspace/yue2-forge")
+                gen_py = os.path.join(repo, "scripts", "ar_generate.py")
+                log = open("/workspace/gen.log", "a")
+                proc = subprocess.Popen(
+                    ["/workspace/yue2venv/bin/python", "-u", gen_py,
+                     ckpt, nar, out_tag, f"@{style_file}", lyr_file, str(seed)],
+                    stdout=log, stderr=subprocess.STDOUT, env=env
+                )
+                json.dump({"done": False, "pct": 50, "status": "generating", "eta": "~45s"}, open(job_file, "w"))
+                proc.wait()
+                gen_dir = "/workspace/tok/full/gen"
+                # Convert to ogg
+                src_flac = os.path.join(gen_dir, f"{out_tag}.flac")
+                dst_ogg = os.path.join(gen_dir, f"{out_tag}.ogg")
+                if os.path.exists(src_flac):
+                    subprocess.run(["ffmpeg", "-y", "-i", src_flac, "-c:a", "libopus", "-b:a", "64k", dst_ogg],
+                                   capture_output=True)
+                    os.remove(src_flac)
+                # Cleanup temp files
+                for f in (style_file, lyr_file):
+                    try: os.remove(f)
+                    except: pass
+                if proc.returncode == 0:
+                    json.dump({"done": True, "pct": 100, "status": "complete", "eta": "",
+                               "file": f"{out_tag}.ogg", "error": None}, open(job_file, "w"))
+                else:
+                    json.dump({"done": True, "pct": 100, "status": "failed", "eta": "",
+                               "error": f"exit code {proc.returncode}"}, open(job_file, "w"))
+            except Exception as e:
+                json.dump({"done": True, "pct": 100, "status": "error", "eta": "",
+                           "error": str(e)[:200]}, open(job_file, "w"))
+        t = threading.Thread(target=run_gen, daemon=True)
+        t.start()
+        return self._json({"ok": True, "job_id": job_id, "eta": "~60s"})
     def _post_delete_run(self):
         if subprocess.run(["pgrep", "-f", "ar_train|ar_lora_"], capture_output=True).returncode == 0:
             return self._fail("stop training first — refusing to delete under a live run", "1")
