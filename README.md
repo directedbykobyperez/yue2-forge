@@ -1,6 +1,6 @@
 ![yue2-forge](assets/logo.png)
 
-# yue2-forge
+# YuE2 LoRA training | @directedbykobyperez
 
 **Train YuE2 artist LoRAs from your own songs — upload, caption, train, listen.**
 
