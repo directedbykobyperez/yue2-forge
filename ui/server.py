@@ -1749,7 +1749,7 @@ class H(http.server.BaseHTTPRequestHandler):
         rep_pen = float(c.get("rep_pen", 1.2))
         if not ckpt:
             return self._fail("select a checkpoint", "3")
-        if not os.path.exists(ckpt):
+        if not os.path.exists(ckpt) and ckpt != "none":
             return self._fail(f"checkpoint not found: {ckpt}", "3")
         job_id = str(uuid.uuid4())[:8]
         job_dir = "/workspace/gen_jobs"
