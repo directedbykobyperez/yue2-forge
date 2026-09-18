@@ -1,11 +1,13 @@
 """NAR LoRA on REAL latents: adapt YuE2's NAR branch (nar_self_attn q/k/v/o + nar_mlp gate/up/down, rank R) + full vae2llm/llm2vae
 to real artist audio, conditioned on OUR head's tokens (frozen head, precomputed). AR branch frozen (prefix cache under no_grad).
 25% of steps use minted windows (true tokens + minted latents) as a regularizer. Eval = held-out real track flow loss (fixed windows/t/noise).
-At the end: render the held-out track with the LoRA'd NAR from head tokens. usage: nar_lora.py <name> <steps> <rank> <head_ckpt>"""
+At the end: render the held-out track with the LoRA'd NAR from head tokens. usage: nar_lora.py <name> <steps> <rank> <head_ckpt>
+Env: VRAM_MODE=low|high"""
 import os, sys, glob, json, math, time, random, hashlib, numpy as np, torch, torch.nn as nn, torch.nn.functional as F, soundfile as sf
 from torch.utils.checkpoint import checkpoint
+sys.path.insert(0, os.path.dirname(__file__))
+from vram_helpers import load_yue2_model, get_snap_path, get_vram_mode
 os.environ.setdefault("HF_HOME","/workspace/hf"); torch.backends.cuda.matmul.allow_tf32=True
-from yue2.modeling_yue2 import YuE2ForCausalLM
 from yue2.modeling_vae import YuE2VAE
 from yue2.protocol import CODEC_OFFSET, MUSIC_END, SongRequest, token_prefixes
 from yue2.tokenization_yue2 import YuE2TextTokenizer
@@ -13,9 +15,15 @@ from yue2.nar import attention as nar_attention, synthesize
 NAME=sys.argv[1]; STEPS=int(sys.argv[2]); R=int(sys.argv[3]); HEAD_CK=sys.argv[4]; HOLD=os.environ.get("HOLD_TRACK","")  # held-out track name for the real-audio metric; defaults to the first track
 W="/workspace/tok/full"; ROOT="/workspace/yue2-corpus/tracks"; RP="/workspace/real/prep"; OUT=f"{W}/{NAME}"; os.makedirs(OUT,exist_ok=True); dev="cuda"
 VOCAB=32768; WIN=768; HWIN=512; D=512; L=8; H=8; LR=1e-4; LR_IO=3e-5; ACC=2; MINTED_P=0.25
-snap=glob.glob("/workspace/hf/hub/models--m-a-p--YuE2-3B/snapshots/*")[0]; vsnap=glob.glob("/workspace/hf/hub/models--m-a-p--YuE2-Vae/snapshots/*")[0]
-model=YuE2ForCausalLM.from_pretrained(snap, local_files_only=True, torch_dtype=torch.bfloat16, low_cpu_mem_usage=True).eval().to(dev); model.requires_grad_(False); bb=model.model
+result=load_yue2_model(dev)
+if isinstance(result, tuple): model, snap = result
+else: model, snap = result, get_snap_path()
+bb=model.model
+if get_vram_mode() == "low":
+    try: bb.gradient_checkpointing_enable()
+    except Exception: pass
 tok=YuE2TextTokenizer(snap+"/qwen.tiktoken")
+vsnap=glob.glob("/workspace/hf/hub/models--m-a-p--YuE2-Vae/snapshots/*")[0]
 # ---- LoRA
 class LoRALinear(nn.Module):
     def __init__(s, base, r, alpha=None):

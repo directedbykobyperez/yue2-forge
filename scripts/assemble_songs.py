@@ -2,15 +2,19 @@
 Input : <song>_pN.ogg + <song>_pN.txt caption files (part-numbered chunks)
 Output: /workspace/real/artist/<song>.flac + <song>.txt (style, trigger first)
         + <song>.lyrics.txt (full tagged lyrics)
-        + copy of lyrics to /workspace/real/artist_lyrics/<song>.lyrics.txt (cursor_prep reads LYD)
+        + copy of lyrics to /workspace/real/artist_lyrics/<song>.lyrics.txt
+
+Env: SRC_DIR  — directory containing part-numbered ogg+txt files (default: /workspace/real/raw)
+      TRIGGER — artist trigger word (optional, prepended to style caption)
+      STYLE   — override style caption (default: "TRIGGER, in the style of TRIGGER.")
 """
 import os, re, glob, subprocess, collections
 
-SRC = os.environ.get("AITK_SRC", "/workspace/dl/datasets/tonydize2")
+SRC = os.environ.get("SRC_DIR", "/workspace/real/raw")
 ART = os.environ.get("ARTIST_DIR", "/workspace/real/artist")
 LYD = os.environ.get("LYRICS_DIR", "/workspace/real/artist_lyrics")
-TRIGGER = os.environ.get("TRIGGER", "tonydize")
-STYLE = os.environ.get("STYLE", f"{TRIGGER}, in the style of {TRIGGER}.")
+TRIGGER = os.environ.get("TRIGGER", "")
+STYLE = os.environ.get("STYLE", f"{TRIGGER}, in the style of {TRIGGER}.") if TRIGGER else os.environ.get("STYLE", "")
 TAGS = ["[verse]", "[chorus]", "[verse]", "[bridge]", "[chorus]", "[outro]"]
 
 os.makedirs(ART, exist_ok=True)

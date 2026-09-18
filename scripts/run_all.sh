@@ -1,10 +1,12 @@
 #!/bin/bash
 # yue2-forge full run: prep -> cursor align -> ar dataset -> train.
 # Assumes install.sh done + dataset in /workspace/real/artist/ (see docs/DATASET.md).
-# Env: RUN_NAME (default my_lora). Training runs in background; logs to /workspace/ar_train.log.
+# Env: RUN_NAME (default my_lora), VRAM_MODE (low|high, auto-detect if unset).
+# Training runs in background; logs to /workspace/ar_train.log.
 set -e
 export RUN_NAME="${RUN_NAME:-my_lora}"
 export HF_HOME="${HF_HOME:-/workspace/hf}"
+export VRAM_MODE="${VRAM_MODE:-}"
 export SCHED_STEPS=3000 CK_FROM=600 CK_EVERY=200
 export REG_PACK="${REG_PACK:-/workspace/real/regularizer/minted_regularizer_pack.pt}"
 REPO_DIR="$(cd "$(dirname "$0")/.." && pwd)"

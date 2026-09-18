@@ -1,15 +1,22 @@
 """AR-branch LoRA: teach YuE2's AR to write token streams (joint_v1 head dialect) for an artist from style+lyrics (cot=off), regularized with minted songs.
-usage: ar_lora.py <name> <steps> <rank> <artist_frac>"""
+usage: ar_lora.py <name> <steps> <rank> <artist_frac>
+Env: VRAM_MODE=low|high, SCHED_STEPS, CK_FROM, CK_EVERY"""
 import os, sys, glob, math, time, random, numpy as np, torch, torch.nn as nn, torch.nn.functional as F
 from torch.utils.checkpoint import checkpoint
+sys.path.insert(0, os.path.dirname(__file__))
+from vram_helpers import load_yue2_model, get_snap_path, get_maxlen, get_vram_mode
 os.environ.setdefault("HF_HOME","/workspace/hf"); torch.backends.cuda.matmul.allow_tf32=True
-from yue2.modeling_yue2 import YuE2ForCausalLM
 from yue2.protocol import CODEC_OFFSET, MUSIC_END
 from yue2.nar import attention as nar_attention
 NAME=sys.argv[1]; STEPS=int(sys.argv[2]); RANK=int(sys.argv[3]); CFRAC=float(sys.argv[4]); INIT=sys.argv[5] if len(sys.argv)>5 else "none"; LR=float(sys.argv[6]) if len(sys.argv)>6 else 1e-4; OUT=f"/workspace/tok/full/{NAME}"; os.makedirs(OUT,exist_ok=True); dev="cuda"
-MAXLEN=12288; ACC=2; CHUNK=1024; SCHED=int(os.environ.get('SCHED_STEPS','3000')); CK_FROM=int(os.environ.get('CK_FROM','600')); CK_EVERY=int(os.environ.get('CK_EVERY','200'))
-snap=glob.glob("/workspace/hf/hub/models--m-a-p--YuE2-3B/snapshots/*")[0]
-model=YuE2ForCausalLM.from_pretrained(snap, local_files_only=True, torch_dtype=torch.bfloat16, low_cpu_mem_usage=True).eval().to(dev); model.requires_grad_(False); bb=model.model
+MAXLEN=get_maxlen(); ACC=2; CHUNK=1024; SCHED=int(os.environ.get('SCHED_STEPS','3000')); CK_FROM=int(os.environ.get('CK_FROM','600')); CK_EVERY=int(os.environ.get('CK_EVERY','200'))
+result=load_yue2_model(dev)
+if isinstance(result, tuple): model, snap = result
+else: model, snap = result, get_snap_path()
+bb=model.model
+if get_vram_mode() == "low":
+    try: bb.gradient_checkpointing_enable()
+    except Exception: pass
 class LoRALinear(nn.Module):
     def __init__(s, base, r):
         super().__init__(); s.base=base; s.A=nn.Parameter(torch.randn(r, base.in_features, device=base.weight.device)*(1/math.sqrt(base.in_features))); s.B=nn.Parameter(torch.zeros(base.out_features, r, device=base.weight.device))

@@ -1,4 +1,4 @@
-"""Tony Dize YuE2 LoRA - training dashboard (stdlib only)."""
+"""YuE2-Forge — LoRA training dashboard (stdlib only)."""
 import http.server, json, os, re, glob, subprocess, time
 
 PORT = 8000
@@ -453,10 +453,13 @@ def gpu_snapshot():
         if q.returncode != 0:
             return {}
         p = [x.strip() for x in q.stdout.splitlines()[0].split(",")]
+        vram_gb = float(p[4]) / 1024
+        vram_mode = "low" if vram_gb < 20 else "high"
         return {"name": p[0], "temp": p[1] + "°C", "load": p[2] + "%",
                 "mem": f"{float(p[3]) / 1024:.1f} / {float(p[4]) / 1024:.1f} GB",
                 "mempct": round(100 * float(p[3]) / max(1, float(p[4]))),
-                "pwr": f"{p[5]} / {p[6]} W"}
+                "pwr": f"{p[5]} / {p[6]} W",
+                "vram_mode": os.environ.get("VRAM_MODE", vram_mode)}
     except Exception:
         return {}
 def loss_svg(series, w=620, h=180):
@@ -685,7 +688,7 @@ class H(http.server.BaseHTTPRequestHandler):
                        f"<div class='plabel'>Seed</div>"
                        f"<input class='seedbox' name='seed_{i}' value='{sd}' type='number'></div></div>")
             g = d["gpu"]
-            gp = (f"<b>{_h.escape(g.get('name', 'GPU'))}</b><br>🌡 {g.get('temp', '-')} · load {g.get('load', '-')} · {g.get('mem', '-')} ({g.get('mempct', 0)}%) · {g.get('pwr', '-')}" if g else "<span class='muted'>no GPU visible</span>")
+            gp = (f"<b>{_h.escape(g.get('name', 'GPU'))}</b><br>🌡 {g.get('temp', '-')} · load {g.get('load', '-')} · {g.get('mem', '-')} ({g.get('mempct', 0)}%) · {g.get('pwr', '-')} · VRAM: {g.get('vram_mode', '?')}" if g else "<span class='muted'>no GPU visible</span>")
             b = HTML.replace("<!--STATIC_STATUS-->", st).replace("<!--STATIC_SAMPLES-->", ss or "<div class='muted'>no samples yet</div>").replace("<!--STATIC_FILES-->", ff).replace("FILLPCT", str(d["pct"])).replace("<!--STATIC_RUNS-->", rs or "<div class='muted'>no runs yet</div>").replace("<!--STATIC_PREP-->", pp).replace("<!--STATIC_GPU-->", gp).replace("<!--LOSSGRAPH-->", d["loss_svg"] or "<div class='muted'>no training data yet</div>").replace("<!--STATIC_PROMPTS-->", pc)
             b = b.replace("<!--MSG-->", f"<div class='ckpt' style='border-color:#7c3aed'>{_h.escape(msg)}</div>" if msg else "")
             b = b.replace("<!--STATIC_PHASE-->", f"<span class='pill'><span class='dot'></span>{_h.escape(str(d['phase']))} · {d['step_est']}/{TOTAL}</span>")
