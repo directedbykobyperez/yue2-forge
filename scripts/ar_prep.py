@@ -1,5 +1,6 @@
-"""AR dataset in score-free (cot=off) format: prefix ids (instructions+tags+lyrics) + codec tokens.
-Artist tracks: tokens from the joint_v1 head. Minted: true semantic tokens. -> /workspace/real/ar/dataset.pt
+"""AR dataset with optional ABC sheet conditioning (cot=off|full|melody).
+Artist tracks: tokens from the joint_v1 head. Minted: true semantic tokens.
+-> /workspace/real/ar/dataset.pt
 Env: COT=off|full|melody (default: off)"""
 import os, glob, json, hashlib, numpy as np, torch, torch.nn as nn, sys
 os.environ.setdefault("HF_HOME","/workspace/hf")
@@ -40,11 +41,9 @@ def load_abc_sheet(name):
 def build_prefix_with_abc(style, lyrics, abc_sheet, cot_mode):
     """Build prefix with ABC sheet if available."""
     if cot_mode == "off" or abc_sheet is None:
-        return token_prefixes(SongRequest(style=style,lyrics=lyr,cot="off",seed=1,id="c"),tok)
-    # For cot=full or cot=melody, we need to include the ABC sheet in the prompt
-    # The YuE2 protocol expects the ABC sheet after [Lyrics]
-    # We'll use the off-mode prefix for now and add ABC sheet handling later
-    return token_prefixes(SongRequest(style=style,lyrics=lyr,cot="off",seed=1,id="c"),tok)
+        return token_prefixes(SongRequest(style=style,lyrics=lyrics,cot="off",seed=1,id="c"),tok)
+    # For cot=full or cot=melody, include ABC sheet in the prompt
+    return token_prefixes(SongRequest(style=style,lyrics=lyrics,cot=cot_mode,seed=1,id="c",abc=abc_sheet),tok)
 
 data=[]
 for d in sorted(glob.glob(f"{RP}/*")):
@@ -52,9 +51,10 @@ for d in sorted(glob.glob(f"{RP}/*")):
     src="/workspace/real/artist"; cap=open(f"{src}/{name}.txt").read().split("===LYRICS===")[0].replace("Global Metadata:","").strip(); style=" ".join(cap.split())[:1500]
     fl=f"/workspace/real/artist_lyrics/{name}.lyrics.txt"; lyr=open(fl).read().strip() if os.path.exists(fl) else (open(f"{src}/{name}.lyrics.txt").read().strip() if os.path.exists(f"{src}/{name}.lyrics.txt") else "[instrumental]")
     abc_sheet = load_abc_sheet(name)
-    data.append(dict(name=name, src="artist", style=style, lyrics=lyr, prefix=token_prefixes(SongRequest(style=style,lyrics=lyr,cot="off",seed=1,id="c"),tok), codec=toks.astype(np.int32), abc_sheet=abc_sheet))
+    prefix = build_prefix_with_abc(style, lyr, abc_sheet, COT)
+    data.append(dict(name=name, src="artist", style=style, lyrics=lyr, prefix=prefix, codec=toks.astype(np.int32), abc_sheet=abc_sheet))
     if abc_sheet:
-        print(f"  {name}: ABC sheet loaded ({len(abc_sheet)} chars)", flush=True)
+        print(f"  {name}: ABC sheet loaded ({len(abc_sheet)} chars, {COT} mode)", flush=True)
 print("artist", len(data), "mean frames", int(np.mean([len(x["codec"]) for x in data])), flush=True)
 PACK=os.environ.get("REG_PACK","/workspace/real/regularizer/minted_regularizer_pack.pt")
 pack=torch.load(PACK, map_location="cpu", weights_only=False); nm=0

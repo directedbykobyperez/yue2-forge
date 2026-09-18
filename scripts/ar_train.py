@@ -92,9 +92,18 @@ def cursor_targets(item):
     """-> (j0, j1, targ [F,ntok] sparse as (frame->token list)) for an artist item, or None."""
     p=f"{RP}/{item['name']}/cursor_words.npy"
     if not os.path.exists(p): return None
-    words=np.load(p); head=f"{INSTRUCTIONS['off']}\n[Tags]\n{item['style']}\n[Lyrics]\n"; ids_head=tok.encode(head); ids_full=tok.encode(head+item["lyrics"]+"\n")
-    if ids_full[:len(ids_head)]!=ids_head or list(item["prefix"][1:len(ids_full)+1])!=list(ids_full): return None
-    j0=1+len(ids_head); lyr_ids=ids_full[len(ids_head):]; j1=j0+len(lyr_ids)
+    words=np.load(p)
+    # Build the same prefix that was used for this item
+    prefix = build_prefix(item, cot_mode="off")  # cursor always uses off-mode for alignment
+    head=f"{INSTRUCTIONS['off']}\n[Tags]\n{item['style']}\n[Lyrics]\n"
+    ids_head=tok.encode(head)
+    ids_full=tok.encode(head+item["lyrics"]+"\n")
+    if ids_full[:len(ids_head)]!=ids_head: return None
+    # Find lyrics position in the prefix
+    lyr_start_in_head = len(ids_head)
+    j0=lyr_start_in_head+1  # +1 for EOD at start
+    lyr_ids=ids_full[lyr_start_in_head:]
+    j1=j0+len(lyr_ids)
     offs=[]; cur=0
     for k in range(len(lyr_ids)): cur=len(tok.decode(lyr_ids[:k+1])); offs.append(cur)
     starts=[0]+offs[:-1]; tok_of_word=[]
@@ -112,12 +121,14 @@ print(f"artist {len(artist)} minted {len(minted)} val {len(mval)}", flush=True)
 
 # ── Helper: build prompt with cot mode ──────────────────────────────
 def build_prefix(item, cot_mode=None):
-    """Build AR prompt prefix. cot_mode overrides global COT."""
+    """Build AR prompt prefix. Uses stored prefix if available (with ABC sheets)."""
     cot = cot_mode or COT
+    # Use pre-built prefix from dataset if available (includes ABC sheet)
+    if "prefix" in item and item["prefix"] is not None:
+        return list(item["prefix"])
+    # Fallback: build from scratch
     instruction = INSTRUCTIONS.get(cot, INSTRUCTIONS['off'])
-    # section headers: [Verse 1], [Chorus] etc. are already in item['lyrics']
     head = f"{instruction}\n[Tags]\n{item['style']}\n[Lyrics]\n{item['lyrics']}\n"
-    # duration field
     dur = item.get("duration")
     if dur is not None and dur > 0:
         head += f"[Duration]\n{dur}\n"
