@@ -67,6 +67,7 @@ time stands still tonight</pre><span class="muted">First line = caption/style. T
 <div style="display:flex;gap:8px;flex-wrap:wrap;margin-bottom:6px">
 <input id="hf_token" type="password" placeholder="HF token (hf_...)" style="flex:1;min-width:180px;background:#000;color:#eee;border:1px solid #444;border-radius:6px;padding:8px">
 <input id="hf_repo" type="text" placeholder="repo: user/dataset-name" style="flex:1;min-width:180px;background:#000;color:#eee;border:1px solid #444;border-radius:6px;padding:8px">
+<input id="hf_sub" type="text" placeholder="subfolder (optional)" style="flex:1;min-width:120px;background:#000;color:#eee;border:1px solid #444;border-radius:6px;padding:8px">
 <button onclick="hfList()" style="padding:8px 16px;border-radius:6px;border:0;background:#7c3aed;color:#fff">HuggingFace</button>
 </div>
 <div id="hf_status" class="muted" style="font-size:12px;margin-bottom:4px"></div>
@@ -316,12 +317,13 @@ let hfSelected=new Set();
 async function hfList(){
   const token=document.getElementById('hf_token').value.trim();
   const repo=document.getElementById('hf_repo').value.trim();
+  const subfolder=document.getElementById('hf_sub').value.trim();
   if(!repo){document.getElementById('hf_status').textContent='enter a repo name';return;}
   document.getElementById('hf_status').textContent='loading...';
   document.getElementById('hf_files').innerHTML='';
   hfSelected.clear();
   try{
-    const r=await fetch('/hf_list',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({token,repo})});
+    const r=await fetch('/hf_list',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({token,repo,subfolder})});
     const d=await r.json();
     if(d.error){document.getElementById('hf_status').textContent='error: '+d.error;return;}
     document.getElementById('hf_status').textContent=d.files.length+' files found';
@@ -1432,28 +1434,33 @@ class H(http.server.BaseHTTPRequestHandler):
             return self._fail("bad request", "2")
         token = c.get("token", "").strip()
         repo = c.get("repo", "").strip()
+        subfolder = c.get("subfolder", "").strip().strip("/")
         if not repo:
             return self._fail("enter a repo name", "2")
         headers = {}
         if token:
             headers["Authorization"] = f"Bearer {token}"
-        url = f"https://huggingface.co/api/datasets/{repo}/tree/main"
-        try:
+        AUDIO_EXTS_HF = {".wav", ".flac", ".ogg", ".mp3", ".m4a", ".webm"}
+        files = []
+        def list_tree(path=""):
+            url = f"https://huggingface.co/api/datasets/{repo}/tree/main/{path}".rstrip("/")
             import urllib.request, urllib.error
             req = urllib.request.Request(url, headers=headers)
             resp = urllib.request.urlopen(req, timeout=15)
-            data = json.loads(resp.read())
-            files = []
-            AUDIO_EXTS_HF = {".wav", ".flac", ".ogg", ".mp3", ".m4a", ".webm"}
-            for item in data:
-                name = item.get("path", "")
-                ext = os.path.splitext(name)[1].lower()
-                if ext in AUDIO_EXTS_HF or ext == ".txt":
-                    size = item.get("size", 0)
-                    if size > 50 * 1024 * 1024:
-                        continue
-                    size_str = f"{size / 1024 / 1024:.1f}MB" if size > 1024 * 1024 else f"{size / 1024:.0f}KB"
-                    files.append({"name": name, "size": size_str})
+            for item in json.loads(resp.read()):
+                item_path = item.get("path", "")
+                if item.get("type") == "directory":
+                    list_tree(item_path)
+                else:
+                    ext = os.path.splitext(item_path)[1].lower()
+                    if ext in AUDIO_EXTS_HF or ext == ".txt":
+                        size = item.get("size", 0)
+                        if size > 50 * 1024 * 1024:
+                            continue
+                        size_str = f"{size / 1024 / 1024:.1f}MB" if size > 1024 * 1024 else f"{size / 1024:.0f}KB"
+                        files.append({"name": item_path, "size": size_str})
+        try:
+            list_tree(subfolder)
             return self._ok({"files": files}, "2")
         except urllib.error.HTTPError as e:
             if e.code == 401:
