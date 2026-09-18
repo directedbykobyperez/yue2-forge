@@ -43,12 +43,12 @@ pre{background:#000;padding:10px;border-radius:8px;overflow:auto;max-height:220p
 <body><div class="hdr"><h2>&#127926; FORGETITLE</h2><div id="gpu">
 <!--STATIC_GPU--></div></div>
 <!--MSG-->
-<div class="tabs"><div class="tab on" data-tab="1">1 · Runs</div><div class="tab" data-tab="2">2 · Dataset studio</div><div class="tab" data-tab="3">3 · Training</div><div class="tab" data-tab="4">4 · Logs</div><div class="tab" data-tab="5">5 · Generate</div></div>
+<div class="tabs"><div class="tab on" data-tab="1">1 · Runs</div><div class="tab" data-tab="2">2 · Dataset</div><div class="tab" data-tab="3">3 · Training</div><div class="tab" data-tab="4">4 · Logs</div><div class="tab" data-tab="5">5 · Generate</div></div>
 <div id="pane1" class="pane"><h3>Runs</h3>
 <div id="runs"><!--STATIC_RUNS--></div>
 <form method="POST" action="/create_run"><div class="ckpt">new: <input name="name" placeholder="artist_name" style="width:180px;background:#000;color:#eee;border:1px solid #444;border-radius:6px;padding:8px"> <button style="padding:8px 16px;border-radius:6px;border:0;background:#7c3aed;color:#fff">Create</button> <span class="muted">then set its trigger below</span></div></form>
 </div>
-<div id="pane2" class="pane" style="display:none"><h3>Dataset studio <span class="muted" id="ds_run"></span></h3>
+<div id="pane2" class="pane" style="display:none"><h3>Dataset <span class="muted" id="ds_run"></span></h3>
 <div class="ckpt"><span class="muted" id="ds_count"></span></div>
 <div class="ckpt" style="background:#1a1a2e;border:1px solid #333;border-radius:8px;padding:10px;margin-bottom:8px"><b>Format guide</b> <span class="muted">(per song):</span><br><pre style="background:#000;border-radius:6px;padding:8px;margin:6px 0;font-size:12px;color:#22d3ee">a dreamy pop ballad about sunset love
 [Verse 1]
@@ -1069,8 +1069,7 @@ class H(http.server.BaseHTTPRequestHandler):
                 flag = "ready ✔" if not x["issues"] else " — ".join(x["issues"])
                 sg += f"<div class='ckpt'><b>{x['name']}</b> <span class='muted'>{x['lines']} lines, {x['audio']['mb'] if x['audio'] else 0} MB</span><br>{player}<span class='muted'>{flag}</span>" + (f"<br><span class='muted'>note: {' — '.join(x['notes'])}</span>" if x["notes"] else "")
                 sg += f"<form method='POST' action='/save_song'><input type='hidden' name='name' value='{x['name']}'>"
-                sg += f"style / caption<br><input name='style' value='{_h.escape(x['style'], quote=True)}' style='width:100%;background:#000;color:#eee;border:1px solid #444;border-radius:6px;padding:8px'><br>"
-                sg += f"lyrics<br><textarea name='lyrics' rows='6' style='width:100%;background:#000;color:#eee;border:1px solid #444;border-radius:6px;padding:8px'>{_h.escape(x['lyrics'], quote=False)}</textarea><br>"
+                sg += f"<label class='muted' style='font-size:12px'>caption + lyrics (first line = caption, then [Verse]/[Chorus] sections)</label><br><textarea name='content' rows='8' style='width:100%;background:#000;color:#eee;border:1px solid #444;border-radius:6px;padding:8px;font-family:monospace'>{_h.escape((x['style'] + chr(10) + x['lyrics']).strip(), quote=False)}</textarea><br>"
                 sg += f"<button>Save song</button></form>"
                 sg += f"<form method='POST' action='/delete_song' onsubmit=\"return confirm('delete {x['name']}?')\"><input type='hidden' name='name' value='{x['name']}'><button>Delete</button></form></div>"
             rs = ""
