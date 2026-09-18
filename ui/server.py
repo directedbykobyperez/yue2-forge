@@ -13,7 +13,7 @@ STATE = os.environ.get("FORGE_STATE", "/workspace/ui/state.json")
 CFG = os.environ.get("FORGE_CFG", "/workspace/sample_cfg.json")
 STYLE_FILE = "/workspace/real/artist/sample.txt"
 LYR_FILE = "/workspace/sample_lyrics.txt"
-TOTAL = int(os.environ.get("FORGE_TOTAL", "1600"))
+TOTAL = int(os.environ.get("FORGE_TOTAL", "800"))
 RUNS = os.environ.get("FORGE_RUNS", "/workspace/runs")
 AUDIO_EXTS = (".flac", ".wav", ".ogg", ".mp3", ".m4a", ".webm")
 MIN_SONGS = 7
@@ -81,7 +81,7 @@ time stands still tonight</pre><span class="muted">First line = caption/style. T
 
 
 <div class="grid">
-<div class="card">step<div><b id="step">-</b> / 1600</div></div>
+<div class="card">step<div><b id="step">-</b> / 800</div></div>
 <div class="card">phase<div><b id="phase">-</b></div></div>
 <div class="card">loss<div><b id="loss">-</b></div></div>
 <div class="card">speed<div><b id="speed">-</b></div></div>
@@ -112,7 +112,7 @@ time stands still tonight</pre><span class="muted">First line = caption/style. T
 <div><label class="muted">weight_decay</label><br><input name="weight_decay" type="number" step="0.0001" value="0.0001" style="width:100%;background:#000;color:#eee;border:1px solid #444;border-radius:6px;padding:8px"></div>
 <div><label class="muted">save_every</label><br><input name="save_every" type="number" value="250" style="width:100%;background:#000;color:#eee;border:1px solid #444;border-radius:6px;padding:8px"></div>
 </div>
-from <select name="init" style="background:#000;color:#eee;border:1px solid #444;border-radius:6px;padding:8px"><option value="fresh">fresh</option><option value="last">last.pt</option><option value="best">best.pt</option></select> rank <select name="rank"><option value="16">16</option><option value="32">32</option><option value="64" selected>64</option><option value="128">128</option></select> to step <input name="steps" type="number" value="1600" style="width:90px;background:#000;color:#eee;border:1px solid #444;border-radius:6px;padding:8px">
+from <select name="init" style="background:#000;color:#eee;border:1px solid #444;border-radius:6px;padding:8px"><option value="fresh">fresh</option><option value="last">last.pt</option><option value="best">best.pt</option></select> rank <select name="rank"><option value="16">16</option><option value="32">32</option><option value="64" selected>64</option><option value="128">128</option></select> to step <input name="steps" type="number" value="800" style="width:90px;background:#000;color:#eee;border:1px solid #444;border-radius:6px;padding:8px">
 <button style="padding:8px 16px;border-radius:6px;border:0;background:#22c55e;color:#000">Start training</button>
 <button type="button" onclick="resumeTrain()" style="padding:8px 16px;border-radius:6px;border:0;background:#f59e0b;color:#000;margin-left:8px">Resume training</button><br><span class="muted">needs 7+ ready songs + dataset prepped (finish songs above, then prep via scripts/run_all.sh steps 1-3)</span>
 <div id="resume_info" style="display:none;margin-top:8px;padding:8px;background:#1c1c1c;border:1px solid #333;border-radius:6px;font-size:12px"></div>
@@ -804,7 +804,7 @@ class H(http.server.BaseHTTPRequestHandler):
             base, _, _ = run_paths()
             last_pt = os.path.join(base, "last.pt")
             best_pt = os.path.join(base, "best.pt")
-            info = {"exists": False, "step": 0, "best_loss": 999, "rank": 64, "target_steps": 1600}
+            info = {"exists": False, "step": 0, "best_loss": 999, "rank": 64, "target_steps": 800}
             if os.path.exists(last_pt):
                 try:
                     if torch:
@@ -1442,7 +1442,7 @@ class H(http.server.BaseHTTPRequestHandler):
         if c is None:
             return self._fail("bad request", "3")
         try:
-            total = max(200, min(5000, int(c.get("steps", 1600))))
+            total = max(200, min(5000, int(c.get("steps", 800))))
             rank = max(8, min(128, int(c.get("rank", 64))))
             base, _, _ = run_paths()
             try:
