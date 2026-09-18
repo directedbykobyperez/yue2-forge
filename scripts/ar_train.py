@@ -241,7 +241,15 @@ def evaluate():
 e=evaluate(); print(f"EVAL step 0 minted_val {e['minted_val']:.3f} artist {e['artist']:.3f}", flush=True)
 log=open(f"{OUT}/train.log","a"); log.write(str(e)+"\n"); t0=time.time(); best=e["artist"]
 
-def save(path): torch.save({"lora":[p.detach().cpu() for p in lora],"rank":RANK,"targets":"ar self_attn qkvo + mlp gate/up/down","cursor_head":cursor_head.state_dict(),"ema":[p.detach().cpu() for p in ema_params],"ar_kl_weight":AR_KL_WEIGHT,"ar_lr_mult":AR_LR_MULT,"abc_dropout":ABC_DROPOUT,"cot":COT}, path)
+def save(path):
+    torch.save({"lora":[p.detach().cpu() for p in lora],"rank":RANK,"targets":"ar self_attn qkvo + mlp gate/up/down","cursor_head":cursor_head.state_dict(),"ema":[p.detach().cpu() for p in ema_params],"ar_kl_weight":AR_KL_WEIGHT,"ar_lr_mult":AR_LR_MULT,"abc_dropout":ABC_DROPOUT,"cot":COT}, path)
+    # Auto-export to .safetensors (user-facing format)
+    safetensors_path = os.path.splitext(path)[0] + ".safetensors"
+    try:
+        import export_safetensors
+        export_safetensors.convert_one(path, safetensors_path, force=True)
+    except Exception as e:
+        print(f"  [export] safetensors export failed: {e}", flush=True)
 
 # ── Training loop ───────────────────────────────────────────────────
 START=int(os.environ.get("START_STEP","0"))
