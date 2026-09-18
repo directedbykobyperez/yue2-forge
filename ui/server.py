@@ -191,8 +191,8 @@ Your lyrics here...
 More lyrics..."></textarea>
 </div>
 <div class="ckpt">
-<label class="muted">Seed</label><br>
-<input id="gen_seed" type="number" value="12" style="width:120px;background:#000;color:#eee;border:1px solid #444;border-radius:6px;padding:8px">
+<label class="muted">Seed (0 = random)</label><br>
+<input id="gen_seed" type="number" value="0" min="0" style="width:120px;background:#000;color:#eee;border:1px solid #444;border-radius:6px;padding:8px">
 </div>
 <div class="grid">
 <div class="ckpt">
@@ -286,7 +286,7 @@ async function startGenerate(){
   document.getElementById('gen_status').textContent='starting...';
   try{
     const r=await fetch('/generate',{method:'POST',headers:{'Content-Type':'application/json'},
-      body:JSON.stringify({ckpt,style,lyrics,seed:parseInt(seed)||12,precision,cfg:parseFloat(cfg)||1.0,cot,temp:parseFloat(temp)||1.0,top_p:parseFloat(top_p)||0.95,top_k:parseInt(top_k)||50,rep_pen:parseFloat(rep_pen)||1.2})});
+      body:JSON.stringify({ckpt,style,lyrics,seed:parseInt(seed)||0,precision,cfg:parseFloat(cfg)||1.0,cot,temp:parseFloat(temp)||1.0,top_p:parseFloat(top_p)||0.95,top_k:parseInt(top_k)||50,rep_pen:parseFloat(rep_pen)||1.2})});
     const d=await r.json();
     if(d.error){document.getElementById('gen_status').textContent='error: '+d.error;return;}
     document.getElementById('gen_status').textContent='generating... eta '+d.eta;
@@ -1739,7 +1739,7 @@ class H(http.server.BaseHTTPRequestHandler):
         ckpt = c.get("ckpt", "")
         style = c.get("style", "")
         lyrics = c.get("lyrics", "")
-        seed = int(c.get("seed", 12))
+        seed = int(c.get("seed", 0) or 0)
         precision = c.get("precision", "int8")
         cfg = float(c.get("cfg", 1.0))
         cot = c.get("cot", "off")
