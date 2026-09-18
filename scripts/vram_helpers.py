@@ -1,4 +1,4 @@
-"""Shared VRAM helpers for yue2-forge training scripts.
+"""Shared VRAM helpers for YuE2 LoRA Training scripts.
 
 Env: VRAM_MODE = low | high  (default: auto-detect based on available VRAM)
      INT8_MODEL_PATH — path to INT8 safetensors (default: /workspace/comfyui/yue2_3b_int8_convrot.safetensors)

@@ -1,5 +1,5 @@
 #!/bin/bash
-# yue2-forge dataset prep for UI runs: prep_real -> cursor_prep -> ar_prep, staged.
+# YuE2 LoRA Training dataset prep for UI runs: prep_real -> cursor_prep -> ar_prep, staged.
 # Writes progress to /workspace/prep_status.json for the dashboard.
 # Usage: bash scripts/prepare_run.sh   (refuses while training runs)
 set -u

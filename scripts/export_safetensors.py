@@ -1,4 +1,4 @@
-"""Export yue2-forge LoRA checkpoints (.pt) to .safetensors — the user-facing format.
+"""Export YuE2 LoRA Training checkpoints (.pt) to .safetensors — the user-facing format.
 
 Usage:
   python export_safetensors.py <checkpoint.pt> [out.safetensors]
@@ -35,7 +35,7 @@ def to_dict(ck, source=""):
     if "cursor_head" in ck:
         for kk, vv in ck["cursor_head"].items():
             td[f"cursor_head.{kk}"] = vv.cpu()
-    meta = {"format": "yue2-forge-lora-1", "rank": str(ck.get("rank", "?")),
+    meta = {"format": "yue2-lora-1", "rank": str(ck.get("rank", "?")),
             "targets": str(ck.get("targets", "")), "source": source,
             "n_layers": str(n_layers)}
     return td, meta

@@ -1,5 +1,5 @@
 #!/bin/bash
-# yue2-forge full run: prep -> cursor align -> ar dataset -> train.
+# YuE2 LoRA Training full run: prep -> cursor align -> ar dataset -> train.
 # Assumes install.sh done + dataset in /workspace/real/artist/ (see docs/DATASET.md).
 # Env: RUN_NAME (default my_lora), VRAM_MODE (low|high, auto-detect if unset).
 # Training runs in background; logs to /workspace/ar_train.log.
