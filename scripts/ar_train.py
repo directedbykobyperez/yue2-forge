@@ -32,9 +32,13 @@ ABC_DROPOUT=float(os.environ.get('ABC_DROPOUT','0.5'))
 TRAIN_WINDOW=int(os.environ.get('TRAIN_WINDOW','1500'))
 COT=str(os.environ.get('COT','off'))
 AR_MAX_TOKENS=int(os.environ.get('AR_MAX_TOKENS','0'))
+SAMPLE_AR_REPETITION_PENALTY=float(os.environ.get('SAMPLE_AR_REPETITION_PENALTY','1.2'))
+EMA_DECAY=float(os.environ.get('EMA_DECAY','0.99'))
+WEIGHT_DECAY=float(os.environ.get('WEIGHT_DECAY','0.0001'))
 
 print(f"Config: rank={RANK} lr={LR} ar_kl_weight={AR_KL_WEIGHT} ar_lr_mult={AR_LR_MULT} "
-      f"abc_dropout={ABC_DROPOUT} train_window={TRAIN_WINDOW} cot={COT} maxlen={MAXLEN}", flush=True)
+      f"abc_dropout={ABC_DROPOUT} train_window={TRAIN_WINDOW} cot={COT} maxlen={MAXLEN} "
+      f"ar_rep_penalty={SAMPLE_AR_REPETITION_PENALTY} ema_decay={EMA_DECAY} weight_decay={WEIGHT_DECAY}", flush=True)
 
 # ── Load model ───────────────────────────────────────────────────────
 result=load_yue2_model(dev)
@@ -72,13 +76,12 @@ if "RESTORE_CH" in dir() and RESTORE_CH is not None: cursor_head.load_state_dict
 # ── Optimizer with AR/NAR LR split ──────────────────────────────────
 ar_params=[p for p in lora if id(p) in ar_param_ids]
 non_ar_params=[p for p in lora if id(p) not in ar_param_ids]
-opt_groups=[{"params":ar_params,"lr":LR*AR_LR_MULT,"weight_decay":0.0}]
-if non_ar_params: opt_groups.append({"params":non_ar_params,"lr":LR,"weight_decay":0.0})
-opt_groups.append({"params":cursor_head.parameters(),"lr":LR,"weight_decay":0.0})
+opt_groups=[{"params":ar_params,"lr":LR*AR_LR_MULT,"weight_decay":WEIGHT_DECAY}]
+if non_ar_params: opt_groups.append({"params":non_ar_params,"lr":LR,"weight_decay":WEIGHT_DECAY})
+opt_groups.append({"params":cursor_head.parameters(),"lr":LR,"weight_decay":WEIGHT_DECAY})
 opt=torch.optim.AdamW(opt_groups,betas=(0.9,0.95))
 if AR_LR_MULT!=1.0: print(f"AR LR multiplier: {AR_LR_MULT}x ({len(ar_params)} AR tensors, {len(non_ar_params)} non-AR)", flush=True)
 
-EMA_DECAY=float(os.environ.get("EMA_DECAY", "0.99"))
 ema_params=[p.detach().clone() for p in lora + list(cursor_head.parameters())]
 if "RESTORE_EMA" in dir() and RESTORE_EMA is not None:
     with torch.no_grad():

@@ -93,6 +93,21 @@ time stands still tonight</pre><span class="muted">First line = caption/style. T
 <div><label class="muted">cot mode</label><br><select name="cot" style="background:#000;color:#eee;border:1px solid #444;border-radius:6px;padding:8px;width:100%"><option value="off">off (no ABC sheet)</option><option value="full">full (chords + melody)</option><option value="melody">melody only</option></select></div>
 <div><label class="muted">tokenizer</label><br><select name="tokenizer" style="background:#000;color:#eee;border:1px solid #444;border-radius:6px;padding:8px;width:100%"><option value="community">Community (Mothersuperior)</option><option value="mert">MERT (fallback)</option></select></div>
 </div>
+<div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:8px;margin-bottom:8px">
+<div><label class="muted">ar_kl_weight</label><br><input name="ar_kl_weight" type="number" step="0.01" value="0.04" style="width:100%;background:#000;color:#eee;border:1px solid #444;border-radius:6px;padding:8px"></div>
+<div><label class="muted">ar_lr_multiplier</label><br><input name="ar_lr_multiplier" type="number" step="0.1" value="1.0" style="width:100%;background:#000;color:#eee;border:1px solid #444;border-radius:6px;padding:8px"></div>
+<div><label class="muted">ar_repetition_penalty</label><br><input name="sample_ar_repetition_penalty" type="number" step="0.1" value="1.2" style="width:100%;background:#000;color:#eee;border:1px solid #444;border-radius:6px;padding:8px"></div>
+</div>
+<div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:8px;margin-bottom:8px">
+<div><label class="muted">abc_dropout</label><br><input name="abc_dropout" type="number" step="0.1" value="0.5" style="width:100%;background:#000;color:#eee;border:1px solid #444;border-radius:6px;padding:8px"></div>
+<div><label class="muted">train_window</label><br><input name="train_window" type="number" value="1500" style="width:100%;background:#000;color:#eee;border:1px solid #444;border-radius:6px;padding:8px"></div>
+<div><label class="muted">ema_decay</label><br><input name="ema_decay" type="number" step="0.01" value="0.99" style="width:100%;background:#000;color:#eee;border:1px solid #444;border-radius:6px;padding:8px"></div>
+</div>
+<div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:8px;margin-bottom:8px">
+<div><label class="muted">learning_rate</label><br><input name="lr" type="number" step="0.00001" value="0.0001" style="width:100%;background:#000;color:#eee;border:1px solid #444;border-radius:6px;padding:8px"></div>
+<div><label class="muted">weight_decay</label><br><input name="weight_decay" type="number" step="0.0001" value="0.0001" style="width:100%;background:#000;color:#eee;border:1px solid #444;border-radius:6px;padding:8px"></div>
+<div><label class="muted">save_every</label><br><input name="save_every" type="number" value="250" style="width:100%;background:#000;color:#eee;border:1px solid #444;border-radius:6px;padding:8px"></div>
+</div>
 from <select name="init" style="background:#000;color:#eee;border:1px solid #444;border-radius:6px;padding:8px"><option value="fresh">fresh</option><option value="last">last.pt</option><option value="best">best.pt</option></select> rank <select name="rank"><option value="16">16</option><option value="32">32</option><option value="64" selected>64</option><option value="128">128</option></select> to step <input name="steps" type="number" value="1600" style="width:90px;background:#000;color:#eee;border:1px solid #444;border-radius:6px;padding:8px">
 <button style="padding:8px 16px;border-radius:6px;border:0;background:#22c55e;color:#000">Start training</button><br><span class="muted">needs 7+ ready songs + dataset prepped (finish songs above, then prep via scripts/run_all.sh steps 1-3)</span></div></form>
 <h3>Samples (your custom prompt below)</h3>
@@ -1208,7 +1223,7 @@ class H(http.server.BaseHTTPRequestHandler):
         if not os.path.exists(train_py):
             return self._fail("trainer script missing on server", "3")
         env = dict(os.environ, HF_HOME="/workspace/hf", SCHED_STEPS="3000",
-                   CK_FROM="600", CK_EVERY="200", START_STEP=str(start),
+                   CK_FROM="600", CK_EVERY=str(c.get("save_every", "250")), START_STEP=str(start),
                    VRAM_MODE=str(c.get("vram_mode", "low")),
                    COT=str(c.get("cot", "off")),
                    TOKENIZER=str(c.get("tokenizer", "community")),
@@ -1216,7 +1231,11 @@ class H(http.server.BaseHTTPRequestHandler):
                    AR_LR_MULTIPLIER=str(c.get("ar_lr_multiplier", "1.0")),
                    ABC_DROPOUT=str(c.get("abc_dropout", "0.5")),
                    TRAIN_WINDOW=str(c.get("train_window", "1500")),
-                   SHEETSAGE_TASK=str(c.get("sheetsage_task", "full")))
+                   SHEETSAGE_TASK=str(c.get("sheetsage_task", "full")),
+                   SAMPLE_AR_REPETITION_PENALTY=str(c.get("sample_ar_repetition_penalty", "1.2")),
+                   EMA_DECAY=str(c.get("ema_decay", "0.99")),
+                   WEIGHT_DECAY=str(c.get("weight_decay", "0.0001")),
+                   LR=str(c.get("lr", "0.0001")))
         log = open("/workspace/ar_train.log", "a")
         subprocess.Popen(["/workspace/yue2venv/bin/python", "-u", train_py, name,
                           str(total - start), str(rank), "0.5", initpt, "1e-4", "0.08"],
