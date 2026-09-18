@@ -198,15 +198,15 @@ async function loadGenCkpts(){
     const r=await fetch('/api');const d=await r.json();
     const sel=document.getElementById('gen_ckpt');
     sel.innerHTML='';
+    const base=document.createElement('option');
+    base.value='none';base.textContent='🎵 Base model (no LoRA)';
+    sel.appendChild(base);
     if(d.checkpoints&&d.checkpoints.length){
       d.checkpoints.forEach(c=>{
         const o=document.createElement('option');
         o.value=c.pt;o.textContent='step-'+c.step+' ('+c.mb+' MB)';
         sel.appendChild(o);
       });
-    }else{
-      const o=document.createElement('option');o.value='';o.textContent='no checkpoints yet';
-      sel.appendChild(o);
     }
   }catch(e){}
 }
@@ -428,11 +428,11 @@ def snapshot():
         d["phase"] = "paused"
         d["note"] = "process not running"
     sp = re.escape(active_run()) + r"_s"
-    for f in sorted(glob.glob(os.path.join(ckdir(), "step-*.pt"))):
+    for f in sorted(glob.glob(os.path.join(ckdir(), "step-*.pt")) + glob.glob(os.path.join(ckdir(), "step-*.safetensors"))):
         m = re.search(r"step-(\d+)", f)
         if m:
             s = int(m.group(1))
-            d["checkpoints"].append({"step": s, "mb": round(os.path.getsize(f) / 2**20),
+            d["checkpoints"].append({"step": s, "pt": f, "mb": round(os.path.getsize(f) / 2**20),
                 "sampled": bool(glob.glob(os.path.join(GEN, active_run() + f"_s{s}.*")))})
     for f in sorted(glob.glob(os.path.join(GEN, active_run() + "_s*.mp3"))) + sorted(glob.glob(os.path.join(GEN, active_run() + "_s*.flac"))):
         m = re.search(sp + r"(\d+)(?:p(\d+))?", os.path.basename(f))
