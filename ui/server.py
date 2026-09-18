@@ -76,7 +76,13 @@ pre{background:#000;padding:10px;border-radius:8px;overflow:auto;max-height:220p
 
 <div class="ckpt">dataset prep — features + stems + tokens (10–40 min by dataset size, runs in background)<br><form method="POST" action="/prepare_dataset"><button style="padding:8px 16px;border-radius:6px;border:0;background:#f59e0b;color:#000">Prepare dataset</button></form> <span class="muted" id="prep_line"></span></div>
 <!--STATIC_PREP-->
-<form method="POST" action="/start_training"><div class="ckpt">training — active run only<br>from <select name="init" style="background:#000;color:#eee;border:1px solid #444;border-radius:6px;padding:8px"><option value="fresh">fresh</option><option value="last">last.pt</option><option value="best">best.pt</option></select> rank <select name="rank"><option value="16">16</option><option value="32">32</option><option value="64" selected>64</option><option value="128">128</option></select> to step <input name="steps" type="number" value="1600" style="width:90px;background:#000;color:#eee;border:1px solid #444;border-radius:6px;padding:8px"> <button style="padding:8px 16px;border-radius:6px;border:0;background:#22c55e;color:#000">Start training</button><br><span class="muted">needs 7+ ready songs + dataset prepped (finish songs above, then prep via scripts/run_all.sh steps 1-3)</span></div></form>
+<form method="POST" action="/start_training"><div class="ckpt">training — active run only<br>
+<div style="display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-bottom:8px">
+<div><label class="muted">model precision</label><br><select name="vram_mode" style="background:#000;color:#eee;border:1px solid #444;border-radius:6px;padding:8px;width:100%"><option value="low">INT8 (low VRAM, 16GB+)</option><option value="high">bf16 (full, 22GB+)</option></select></div>
+<div><label class="muted">cot mode</label><br><select name="cot" style="background:#000;color:#eee;border:1px solid #444;border-radius:6px;padding:8px;width:100%"><option value="off">off (no ABC sheet)</option><option value="full">full (chords + melody)</option><option value="melody">melody only</option></select></div>
+</div>
+from <select name="init" style="background:#000;color:#eee;border:1px solid #444;border-radius:6px;padding:8px"><option value="fresh">fresh</option><option value="last">last.pt</option><option value="best">best.pt</option></select> rank <select name="rank"><option value="16">16</option><option value="32">32</option><option value="64" selected>64</option><option value="128">128</option></select> to step <input name="steps" type="number" value="1600" style="width:90px;background:#000;color:#eee;border:1px solid #444;border-radius:6px;padding:8px">
+<button style="padding:8px 16px;border-radius:6px;border:0;background:#22c55e;color:#000">Start training</button><br><span class="muted">needs 7+ ready songs + dataset prepped (finish songs above, then prep via scripts/run_all.sh steps 1-3)</span></div></form>
 <h3>Samples (your custom prompt below)</h3>
 <!--STATIC_SAMPLES-->
 <div id="samples"></div>
@@ -1179,7 +1185,14 @@ class H(http.server.BaseHTTPRequestHandler):
         if not os.path.exists(train_py):
             return self._fail("trainer script missing on server", "3")
         env = dict(os.environ, HF_HOME="/workspace/hf", SCHED_STEPS="3000",
-                   CK_FROM="600", CK_EVERY="200", START_STEP=str(start))
+                   CK_FROM="600", CK_EVERY="200", START_STEP=str(start),
+                   VRAM_MODE=str(c.get("vram_mode", "low")),
+                   COT=str(c.get("cot", "off")),
+                   AR_KL_WEIGHT=str(c.get("ar_kl_weight", "0.04")),
+                   AR_LR_MULTIPLIER=str(c.get("ar_lr_multiplier", "1.0")),
+                   ABC_DROPOUT=str(c.get("abc_dropout", "0.5")),
+                   TRAIN_WINDOW=str(c.get("train_window", "1500")),
+                   SHEETSAGE_TASK=str(c.get("sheetsage_task", "full")))
         log = open("/workspace/ar_train.log", "a")
         subprocess.Popen(["/workspace/yue2venv/bin/python", "-u", train_py, name,
                           str(total - start), str(rank), "0.5", initpt, "1e-4", "0.08"],

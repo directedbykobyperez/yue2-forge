@@ -15,6 +15,7 @@ export ABC_DROPOUT="${ABC_DROPOUT:-0.5}"
 export TRAIN_WINDOW="${TRAIN_WINDOW:-1500}"
 export COT="${COT:-off}"
 export AR_MAX_TOKENS="${AR_MAX_TOKENS:-0}"
+export SHEETSAGE_TASK="${SHEETSAGE_TASK:-full}"
 export REG_PACK="${REG_PACK:-/workspace/real/regularizer/minted_regularizer_pack.pt}"
 REPO_DIR="$(cd "$(dirname "$0")/.." && pwd)"
 PY=/workspace/yue2venv/bin/python
