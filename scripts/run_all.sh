@@ -8,6 +8,13 @@ export RUN_NAME="${RUN_NAME:-my_lora}"
 export HF_HOME="${HF_HOME:-/workspace/hf}"
 export VRAM_MODE="${VRAM_MODE:-}"
 export SCHED_STEPS=3000 CK_FROM=600 CK_EVERY=200
+# Training hyperparams (override via env)
+export AR_KL_WEIGHT="${AR_KL_WEIGHT:-0.04}"
+export AR_LR_MULTIPLIER="${AR_LR_MULTIPLIER:-1.0}"
+export ABC_DROPOUT="${ABC_DROPOUT:-0.5}"
+export TRAIN_WINDOW="${TRAIN_WINDOW:-1500}"
+export COT="${COT:-off}"
+export AR_MAX_TOKENS="${AR_MAX_TOKENS:-0}"
 export REG_PACK="${REG_PACK:-/workspace/real/regularizer/minted_regularizer_pack.pt}"
 REPO_DIR="$(cd "$(dirname "$0")/.." && pwd)"
 PY=/workspace/yue2venv/bin/python
