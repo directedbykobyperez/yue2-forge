@@ -46,7 +46,18 @@ pre{background:#000;padding:10px;border-radius:8px;overflow:auto;max-height:220p
 </div>
 <div id="pane2" class="pane" style="display:none"><h3>Dataset studio <span class="muted" id="ds_run"></span></h3>
 <div class="ckpt"><span class="muted" id="ds_count"></span></div>
-<form method="POST" action="/upload_audio" enctype="multipart/form-data"><div class="ckpt">Upload audio (WAV/FLAC/OGG/MP3/M4A/WebM) + matching songname.txt files to auto-fill lyrics.<br><input type="file" name="audio" multiple accept="audio/*,.wav,.flac,.ogg,.mp3,.m4a,.webm,.txt"> <button style="padding:8px 16px;border-radius:6px;border:0;background:#7c3aed;color:#fff">Upload</button></div></form>
+<div class="ckpt" style="background:#1a1a2e;border:1px solid #333;border-radius:8px;padding:10px;margin-bottom:8px"><b>Format guide</b> <span class="muted">(per song):</span><br><pre style="background:#000;border-radius:6px;padding:8px;margin:6px 0;font-size:12px;color:#22d3ee">a dreamy pop ballad about sunset love
+[Verse 1]
+walking down the golden shore
+waves crashing at my feet
+
+[Chorus]
+oh the sunset glow
+lighting up our souls
+
+[Bridge]
+time stands still tonight</pre><span class="muted">First line = caption/style. Then [Verse], [Chorus], [Bridge] sections with lyrics. Upload .txt files alongside audio to auto-fill.</span></div>
+<form method="POST" action="/upload_audio" enctype="multipart/form-data"><div class="ckpt">Upload audio (WAV/FLAC/OGG/MP3/M4A/WebM) + matching .txt files.<br><span class="muted">.txt format: first line = caption, then [Verse]/[Chorus] lyrics (see below)</span><br><input type="file" name="audio" multiple accept="audio/*,.wav,.flac,.ogg,.mp3,.m4a,.webm,.txt"> <button style="padding:8px 16px;border-radius:6px;border:0;background:#7c3aed;color:#fff">Upload</button></div></form>
 <div id="songs"></div>
 </div>
 <div id="pane3" class="pane" style="display:none"><!--STATIC_STATUS-->
@@ -77,9 +88,10 @@ pre{background:#000;padding:10px;border-radius:8px;overflow:auto;max-height:220p
 <div class="ckpt">dataset prep — features + stems + tokens (10–40 min by dataset size, runs in background)<br><form method="POST" action="/prepare_dataset"><button style="padding:8px 16px;border-radius:6px;border:0;background:#f59e0b;color:#000">Prepare dataset</button></form> <span class="muted" id="prep_line"></span></div>
 <!--STATIC_PREP-->
 <form method="POST" action="/start_training"><div class="ckpt">training — active run only<br>
-<div style="display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-bottom:8px">
+<div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:8px;margin-bottom:8px">
 <div><label class="muted">model precision</label><br><select name="vram_mode" style="background:#000;color:#eee;border:1px solid #444;border-radius:6px;padding:8px;width:100%"><option value="low">INT8 (low VRAM, 16GB+)</option><option value="high">bf16 (full, 22GB+)</option></select></div>
 <div><label class="muted">cot mode</label><br><select name="cot" style="background:#000;color:#eee;border:1px solid #444;border-radius:6px;padding:8px;width:100%"><option value="off">off (no ABC sheet)</option><option value="full">full (chords + melody)</option><option value="melody">melody only</option></select></div>
+<div><label class="muted">tokenizer</label><br><select name="tokenizer" style="background:#000;color:#eee;border:1px solid #444;border-radius:6px;padding:8px;width:100%"><option value="community">Community (Mothersuperior)</option><option value="mert">MERT (fallback)</option></select></div>
 </div>
 from <select name="init" style="background:#000;color:#eee;border:1px solid #444;border-radius:6px;padding:8px"><option value="fresh">fresh</option><option value="last">last.pt</option><option value="best">best.pt</option></select> rank <select name="rank"><option value="16">16</option><option value="32">32</option><option value="64" selected>64</option><option value="128">128</option></select> to step <input name="steps" type="number" value="1600" style="width:90px;background:#000;color:#eee;border:1px solid #444;border-radius:6px;padding:8px">
 <button style="padding:8px 16px;border-radius:6px;border:0;background:#22c55e;color:#000">Start training</button><br><span class="muted">needs 7+ ready songs + dataset prepped (finish songs above, then prep via scripts/run_all.sh steps 1-3)</span></div></form>
@@ -177,7 +189,9 @@ if(!songsDirty){let q='';if(!d.studio.songs.length)q='<div class="muted">no song
 for(const x of d.studio.songs){const ok=x.issues.length===0;
 const esc=s=>String(s).replace(/&/g,'&amp;').replace(/"/g,'&quot;').replace(/</g,'&lt;');
 const aud=x.audio?'<audio controls preload="none" style="width:100%" src="/a/'+d.studio.run+'/'+x.audio.file+'"></audio><br>':'';
-q+='<div class="ckpt"><b>'+x.name+'</b> '+(x.audio?'<span class="muted">'+x.audio.mb+' MB flac</span>':'<span class="muted">no audio</span>')+' '+(ok?'\u2714 ready':'<span style="color:#f59e0b">'+x.issues.join('; ')+'</span>')+(x.notes&&x.notes.length?'<br><span class="muted">note: '+x.notes.join('; ')+'</span>':'')+'<br>'+aud+'<form method="POST" action="/save_song"><input type="hidden" name="name" value="'+x.name+'">style / caption<br><input name="style" value="'+esc(x.style)+'" style="width:100%;background:#000;color:#eee;border:1px solid #444;border-radius:6px;padding:8px"><br>lyrics<br><textarea name="lyrics" rows="6" style="width:100%;background:#000;color:#eee;border:1px solid #444;border-radius:6px;padding:8px">'+esc(x.lyrics)+'</textarea><br><button>Save song</button></form><form method="POST" action="/delete_song"><input type="hidden" name="name" value="'+x.name+'"><button>Delete</button></form></div>';}
+// Combine style + lyrics into single textarea
+const combined=x.style+'\n'+x.lyrics;
+q+='<div class="ckpt"><b>'+x.name+'</b> '+(x.audio?'<span class="muted">'+x.audio.mb+' MB flac</span>':'<span class="muted">no audio</span>')+' '+(ok?'\u2714 ready':'<span style="color:#f59e0b">'+x.issues.join('; ')+'</span>')+(x.notes&&x.notes.length?'<br><span class="muted">note: '+x.notes.join('; ')+'</span>':'')+'<br>'+aud+'<form method="POST" action="/save_song"><input type="hidden" name="name" value="'+x.name+'"><label class="muted" style="font-size:12px">caption + lyrics (first line = caption, then [Verse]/[Chorus] sections)</label><br><textarea name="content" rows="8" style="width:100%;background:#000;color:#eee;border:1px solid #444;border-radius:6px;padding:8px;font-family:monospace">'+esc(combined)+'</textarea><br><button>Save song</button></form><form method="POST" action="/delete_song"><input type="hidden" name="name" value="'+x.name+'"><button>Delete</button></form></div>';}
 document.getElementById('songs').innerHTML=q;}}
 
 }catch(e){document.getElementById('pct').textContent='connection error ('+e.message+'), retrying...';}}tick();setInterval(tick,3000);
@@ -425,7 +439,7 @@ def validate_song(base, ad, trig):
     if len(lines) < 8:
         info["issues"].append(f"lyrics short ({len(lines)} lines, want 15+)")
     if not info["tags"]:
-        info["notes"].append("no [section] tags — structure looser (add [verse]/[chorus] later for tighter songs)")
+        info["notes"].append("no [Verse]/[Chorus] tags — add section headers for better structure (see format guide above)")
     return info
 def studio_snapshot():
     base, ad, _ = run_paths()
@@ -896,13 +910,17 @@ class H(http.server.BaseHTTPRequestHandler):
             return self._fail("bad request", "2")
         try:
             name = clean_name(c.get("name", ""))
-            style = str(c.get("style", "")).strip()[:1500]
-            lyrics = str(c.get("lyrics", "")).strip()[:12000]
+            # New combined format: content = "caption\n[Verse 1]\nlyrics..."
+            content = str(c.get("content", "")).strip()[:15000]
             strig = re.sub(r"[^a-z0-9]+", "", str(c.get("trigger", "")).strip().lower())[:32] if "trigger" in c else None
             if not name:
                 raise ValueError("song name required (letters, numbers, _)")
-            if not style or not lyrics:
-                raise ValueError("style and lyrics required")
+            if not content:
+                raise ValueError("content required")
+            # Parse combined content: first line = caption, rest = lyrics
+            lines = content.split("\n")
+            style = lines[0].strip()[:1500] if lines else ""
+            lyrics = "\n".join(lines[1:]).strip()[:12000] if len(lines) > 1 else "[instrumental]"
         except Exception as e:
             return self._fail(e, "2")
         _, ad, ald = run_paths()
@@ -1021,16 +1039,21 @@ class H(http.server.BaseHTTPRequestHandler):
                 errs.append(f"{fname}: bad name")
                 continue
             try:
-                lyr = text.decode("utf-8", "replace").strip()[:12000]
+                content = text.decode("utf-8", "replace").strip()[:15000]
             except Exception:
                 errs.append(f"{fname}: unreadable text")
                 continue
-            if not lyr:
+            if not content:
                 errs.append(f"{fname}: empty lyrics")
                 continue
-            open(os.path.join(ad, name + ".lyrics.txt"), "w").write(lyr + "\n")
-            open(os.path.join(ald, name + ".lyrics.txt"), "w").write(lyr + "\n")
-            done.append(name + " (lyrics)")
+            # Parse combined format: first line = caption, rest = lyrics
+            lines = content.split("\n")
+            style = lines[0].strip()[:1500] if lines else ""
+            lyrics = "\n".join(lines[1:]).strip()[:12000] if len(lines) > 1 else "[instrumental]"
+            open(os.path.join(ad, name + ".txt"), "w").write(full_style(style, run_trigger(), run_template()) + "\n")
+            open(os.path.join(ad, name + ".lyrics.txt"), "w").write(lyrics + "\n")
+            open(os.path.join(ald, name + ".lyrics.txt"), "w").write(lyrics + "\n")
+            done.append(name + " (lyrics + caption)")
         for fname, blob in tracks:
             name = clean_name(os.path.splitext(os.path.basename(fname))[0])
             if not name:
@@ -1188,6 +1211,7 @@ class H(http.server.BaseHTTPRequestHandler):
                    CK_FROM="600", CK_EVERY="200", START_STEP=str(start),
                    VRAM_MODE=str(c.get("vram_mode", "low")),
                    COT=str(c.get("cot", "off")),
+                   TOKENIZER=str(c.get("tokenizer", "community")),
                    AR_KL_WEIGHT=str(c.get("ar_kl_weight", "0.04")),
                    AR_LR_MULTIPLIER=str(c.get("ar_lr_multiplier", "1.0")),
                    ABC_DROPOUT=str(c.get("abc_dropout", "0.5")),

@@ -16,11 +16,12 @@ export TRAIN_WINDOW="${TRAIN_WINDOW:-1500}"
 export COT="${COT:-off}"
 export AR_MAX_TOKENS="${AR_MAX_TOKENS:-0}"
 export SHEETSAGE_TASK="${SHEETSAGE_TASK:-full}"
+export TOKENIZER="${TOKENIZER:-community}"
 export REG_PACK="${REG_PACK:-/workspace/real/regularizer/minted_regularizer_pack.pt}"
 REPO_DIR="$(cd "$(dirname "$0")/.." && pwd)"
 PY=/workspace/yue2venv/bin/python
 
-echo "==> [1/4] prep_real (MERT + VAE + prefixes)"
+echo "==> [1/4] prep_real (MERT + VAE + Codec + ABC sheets)"
 $PY "$REPO_DIR/scripts/prep_real.py"
 echo "==> [2/4] cursor_prep (demucs stems + lyric alignment)"
 $PY "$REPO_DIR/scripts/cursor_prep.py"
