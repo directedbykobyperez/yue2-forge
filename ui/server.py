@@ -418,7 +418,7 @@ document.getElementById('log').textContent=d.log_tail;
 const sig=JSON.stringify([d.samples,d.checkpoints,d.files,d.studio,d.runs,d.prep]);
 if(sig!==lastSig){lastSig=sig;
 let r='';for(const x of d.runs.runs){const act=x.name===d.runs.active;
-r+='<div class="ckpt">'+(act?'<b>'+x.name+' (active)</b>': '<b>'+x.name+'</b> <form method="POST" action="/switch_run" style="display:inline"><input type="hidden" name="name" value="'+x.name+'"><button>Switch</button></form>')+' <span class="muted">'+x.ready+'/'+x.total+' songs'+(x.ckpts.length?' | ckpts '+x.ckpts.join(','):'')+(x.best?' | best ✔':'')+'</span> <a href="/confirm_delete?run='+x.name+'" style="color:#f87171;text-decoration:none;font-size:18px" title="delete run">✕</a><br><form method="POST" action="/set_trigger">trigger: <input name="trigger" value="'+x.trigger+'" placeholder="empty = caption-only" style="width:160px;background:#000;color:#eee;border:1px solid #444;border-radius:6px;padding:8px"><input type="hidden" name="run" value="'+x.name+'"> caption: <select name="template"><option value="full"'+(x.template!=='short'?' selected':'')+'>trigger, in the style of…</option><option value="short"'+(x.template==='short'?' selected':'')+'>trigger, caption</option></select> <button>Save</button></form></div>';}
+r+='<div class="ckpt">'+(act?'<b>'+x.name+' (active)</b>': '<b>'+x.name+'</b> <form method="POST" action="/switch_run" style="display:inline"><input type="hidden" name="name" value="'+x.name+'"><button>Switch</button></form>')+' <span class="muted">'+x.ready+'/'+x.total+' songs'+(x.ckpts.length?' | ckpts '+x.ckpts.join(','):'')+(x.best?' | best ✔':'')+'</span> <a href="/confirm_delete?run='+x.name+'" style="color:#f87171;text-decoration:none;font-size:18px" title="delete run">✕</a><br><form method="POST" action="/set_trigger">trigger: <input name="trigger" value="'+x.trigger+'" placeholder="empty = caption-only" style="width:160px;background:#000;color:#eee;border:1px solid #444;border-radius:6px;padding:8px"><input type="hidden" name="run" value="'+x.name+'"> caption: <select name="template"><option value="caption"'+(x.template==='caption'?' selected':'')+'>caption</option><option value="lyrics"'+(x.template==='lyrics'?' selected':'')+'>lyrics</option></select> <button>Save</button></form></div>';}
 document.getElementById('runs').innerHTML=r||'<div class="muted">no runs yet — create one below</div>';
 let s='';if(d.samples.length==0){s='no samples yet - first one lands at step 600';}
 for(const x of d.samples){const k=x.step+'p'+x.p;const pl=x.p>=0?' · prompt '+(x.p+1):'';s+='<div class="ckpt"><b>step '+x.step+pl+'</b> <span class="muted">'+x.secs+'s</span><br><button class="play" data-k="'+k+'" data-file="'+x.file+'">\u25B6</button><input class="seek" type="range" id="seek'+k+'" value="0" step="0.1"> <span id="t'+k+'" class="muted">0:00</span><div class="bar" style="height:6px"><div class="fill" id="bar'+k+'"></div></div><a class="dl" href="/m/'+x.file+'" download="'+x.file+'">\u2B07 Download MP3</a></div>';}
@@ -638,14 +638,16 @@ def song_trigger(run, song):
     return _songs_meta(run).get(song, {}).get("trigger", "") or run_trigger(run)
 def run_template(name=None):
     try:
-        t = json.load(open(os.path.join(run_paths(name)[0], "config.json"))).get("template", "full")
-        return t if t in ("full", "short") else "full"
+        t = json.load(open(os.path.join(run_paths(name)[0], "config.json"))).get("template", "caption")
     except Exception:
-        return "full"
-def trig_prefix(trig, template="full"):
+        return "caption"
+    if t in ("lyrics",):
+        return "lyrics"
+    return "caption"
+def trig_prefix(trig, template="caption"):
     if not trig:
         return ""
-    return f"{trig}, " if template == "short" else f"{trig}, in the style of {trig}. "
+    return f"{trig}, "
 def split_style(raw, trig):
     """disk full caption -> box display caption (any trigger prefix hidden)."""
     raw = (raw or "").strip()
@@ -1076,7 +1078,7 @@ class H(http.server.BaseHTTPRequestHandler):
             for x in d["runs"]["runs"]:
                 act = x["name"] == d["runs"]["active"]
                 sw = "" if act else f"<form method='POST' action='/switch_run' style='display:inline'><input type='hidden' name='name' value='{x['name']}'><button>Switch</button></form>"
-                rs += f"<div class='ckpt'><b>{x['name']}</b>{' (active)' if act else ''} <span class='muted'>{x['ready']}/{x['total']} songs" + (f" | ckpts {','.join(map(str, x['ckpts']))}" if x["ckpts"] else "") + "</span> " + sw + f" <a href='/confirm_delete?run={x['name']}' style='color:#f87171;text-decoration:none;font-size:18px' title='delete run'>✕</a><br><form method='POST' action='/set_trigger'>trigger: <input name='trigger' value='{_h.escape(x['trigger'], quote=True)}' placeholder='empty = caption-only' style='width:160px;background:#000;color:#eee;border:1px solid #444;border-radius:6px;padding:8px'><input type='hidden' name='run' value='{x['name']}'> caption: <select name='template'><option value='full'{(' selected' if x['template'] != 'short' else '')}>trigger, in the style of…</option><option value='short'{(' selected' if x['template'] == 'short' else '')}>trigger, caption</option></select> <button>Save</button></form></div>"
+                rs += f"<div class='ckpt'><b>{x['name']}</b>{' (active)' if act else ''} <span class='muted'>{x['ready']}/{x['total']} songs" + (f" | ckpts {','.join(map(str, x['ckpts']))}" if x["ckpts"] else "") + "</span> " + sw + f" <a href='/confirm_delete?run={x['name']}' style='color:#f87171;text-decoration:none;font-size:18px' title='delete run'>✕</a><br><form method='POST' action='/set_trigger'>trigger: <input name='trigger' value='{_h.escape(x['trigger'], quote=True)}' placeholder='empty = caption-only' style='width:160px;background:#000;color:#eee;border:1px solid #444;border-radius:6px;padding:8px'><input type='hidden' name='run' value='{x['name']}'> caption: <select name='template'><option value='caption'{(' selected' if x['template'] == 'caption' else '')}>caption</option><option value='lyrics'{(' selected' if x['template'] == 'lyrics' else '')}>lyrics</option></select> <button>Save</button></form></div>"
             pp = f"<div class='muted'>prep: {d['prep'].get('stage', 'idle')} — {d['prep'].get('detail', '')}</div>"
             pc = "<div class='ptools'><span class='muted' style='margin-right:8px'>up to 4 — one render each per checkpoint</span><button type='button' class='padd' data-action='add'>+ Add prompt</button></div>"
             plist = d["cfg"].get("prompts", [])
@@ -1309,10 +1311,12 @@ class H(http.server.BaseHTTPRequestHandler):
             pass
         cfg["trigger"] = trig
         tmpl = str(c.get("template", "")).strip().lower()
-        if tmpl in ("full", "short"):
+        if tmpl in ("caption", "lyrics"):
             cfg["template"] = tmpl
+        elif tmpl in ("full", "short"):
+            cfg["template"] = "caption"
         else:
-            tmpl = cfg.get("template", "full")
+            tmpl = cfg.get("template", "caption")
         json.dump(cfg, open(cfgp, "w"))
         n = 0
         if trig:
