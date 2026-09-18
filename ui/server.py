@@ -43,7 +43,7 @@ pre{background:#000;padding:10px;border-radius:8px;overflow:auto;max-height:220p
 <body><div class="hdr"><h2>&#127926; FORGETITLE</h2><div id="gpu">
 <!--STATIC_GPU--></div></div>
 <!--MSG-->
-<div class="tabs"><a href="#" class="tab on" data-tab="1">1 · Runs</a><a href="#" class="tab" data-tab="2">2 · Dataset studio</a><a href="#" class="tab" data-tab="3">3 · Training</a><a href="#" class="tab" data-tab="4">4 · Logs</a><a href="#" class="tab" data-tab="5">5 · Generate</a></div>
+<div class="tabs"><div class="tab on" data-tab="1">1 · Runs</div><div class="tab" data-tab="2">2 · Dataset studio</div><div class="tab" data-tab="3">3 · Training</div><div class="tab" data-tab="4">4 · Logs</div><div class="tab" data-tab="5">5 · Generate</div></div>
 <div id="pane1" class="pane"><h3>Runs</h3>
 <div id="runs"></div><!--STATIC_RUNS-->
 <form method="POST" action="/create_run"><div class="ckpt">new: <input name="name" placeholder="artist_name" style="width:180px;background:#000;color:#eee;border:1px solid #444;border-radius:6px;padding:8px"> <button style="padding:8px 16px;border-radius:6px;border:0;background:#7c3aed;color:#fff">Create</button> <span class="muted">then set its trigger below</span></div></form>
@@ -262,7 +262,7 @@ loadGenCkpts();loadGenList();
 let songsDirty=false;
 var activeTab=localStorage.getItem('forge_tab')||'1';
 function switchTab(t){activeTab=t;localStorage.setItem('forge_tab',t);document.querySelectorAll('.pane').forEach(function(p){p.style.display='none';});document.getElementById('pane'+t).style.display='';document.querySelectorAll('.tab').forEach(function(b){b.classList.toggle('on',b.dataset.tab===t);});}
-document.addEventListener('DOMContentLoaded',function(){switchTab(activeTab);document.querySelectorAll('.tab').forEach(function(b){b.addEventListener('click',function(){switchTab(this.dataset.tab);});});});
+document.addEventListener('DOMContentLoaded',function(){switchTab(activeTab);document.querySelectorAll('.tab').forEach(function(b){b.addEventListener('click',function(e){e.preventDefault();switchTab(this.dataset.tab);});});});
 document.addEventListener('click',function(e){
 var t=e.target;
 if(t.classList.contains('play')){togglePlay(t.dataset.k,t.dataset.file,t);return;}
