@@ -45,7 +45,7 @@ pre{background:#000;padding:10px;border-radius:8px;overflow:auto;max-height:220p
 <!--MSG-->
 <div class="tabs"><div class="tab on" data-tab="1">1 · Runs</div><div class="tab" data-tab="2">2 · Dataset studio</div><div class="tab" data-tab="3">3 · Training</div><div class="tab" data-tab="4">4 · Logs</div><div class="tab" data-tab="5">5 · Generate</div></div>
 <div id="pane1" class="pane"><h3>Runs</h3>
-<div id="runs"></div><!--STATIC_RUNS-->
+<div id="runs"><!--STATIC_RUNS--></div>
 <form method="POST" action="/create_run"><div class="ckpt">new: <input name="name" placeholder="artist_name" style="width:180px;background:#000;color:#eee;border:1px solid #444;border-radius:6px;padding:8px"> <button style="padding:8px 16px;border-radius:6px;border:0;background:#7c3aed;color:#fff">Create</button> <span class="muted">then set its trigger below</span></div></form>
 </div>
 <div id="pane2" class="pane" style="display:none"><h3>Dataset studio <span class="muted" id="ds_run"></span></h3>
