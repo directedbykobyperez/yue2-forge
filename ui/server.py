@@ -62,6 +62,16 @@ lighting up our souls
 [Bridge]
 time stands still tonight</pre><span class="muted">First line = caption/style. Then [Verse], [Chorus], [Bridge] sections with lyrics. Upload .txt files alongside audio to auto-fill.</span></div>
 <form method="POST" action="/upload_audio" enctype="multipart/form-data"><div class="ckpt">Upload audio (WAV/FLAC/OGG/MP3/M4A/WebM) + matching .txt files.<br><span class="muted">.txt format: first line = caption, then [Verse]/[Chorus] lyrics (see below)</span><br><input type="file" name="audio" multiple accept="audio/*,.wav,.flac,.ogg,.mp3,.m4a,.webm,.txt"> <button style="padding:8px 16px;border-radius:6px;border:0;background:#7c3aed;color:#fff">Upload</button></div></form>
+<div class="ckpt">
+<label class="muted">Import from HuggingFace</label><br>
+<div style="display:flex;gap:8px;flex-wrap:wrap;margin-bottom:6px">
+<input id="hf_token" type="password" placeholder="HF token (hf_...)" style="flex:1;min-width:180px;background:#000;color:#eee;border:1px solid #444;border-radius:6px;padding:8px">
+<input id="hf_repo" type="text" placeholder="repo: user/dataset-name" style="flex:1;min-width:180px;background:#000;color:#eee;border:1px solid #444;border-radius:6px;padding:8px">
+<button onclick="hfList()" style="padding:8px 16px;border-radius:6px;border:0;background:#7c3aed;color:#fff">HuggingFace</button>
+</div>
+<div id="hf_status" class="muted" style="font-size:12px;margin-bottom:4px"></div>
+<div id="hf_files" style="max-height:300px;overflow-y:auto"></div>
+</div>
 <div id="songs"></div>
 </div>
 <div id="pane3" class="pane" style="display:none"><!--STATIC_STATUS-->
@@ -302,6 +312,54 @@ loadGenCkpts();loadGenList();
 </script>
 </div>
 <script>
+let hfSelected=new Set();
+async function hfList(){
+  const token=document.getElementById('hf_token').value.trim();
+  const repo=document.getElementById('hf_repo').value.trim();
+  if(!repo){document.getElementById('hf_status').textContent='enter a repo name';return;}
+  document.getElementById('hf_status').textContent='loading...';
+  document.getElementById('hf_files').innerHTML='';
+  hfSelected.clear();
+  try{
+    const r=await fetch('/hf_list',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({token,repo})});
+    const d=await r.json();
+    if(d.error){document.getElementById('hf_status').textContent='error: '+d.error;return;}
+    document.getElementById('hf_status').textContent=d.files.length+' files found';
+    let html='<table style="width:100%;font-size:12px;border-collapse:collapse">';
+    d.files.forEach((f,i)=>{
+      const ext=f.name.split('.').pop().toLowerCase();
+      const isAudio=['wav','flac','ogg','mp3','m4a','webm'].includes(ext);
+      const isTxt=ext==='txt';
+      const icon=isAudio?'🎵':isTxt?'📝':'📄';
+      const canAdd=isAudio||isTxt;
+      html+='<tr style="border-bottom:#333 1px solid">';
+      html+='<td style="padding:4px">'+icon+' <span class="muted">'+f.name+'</span> <span class="muted">('+f.size+')</span></td>';
+      if(canAdd) html+='<td style="padding:4px;text-align:right"><button onclick="hfToggle(this,\''+f.name+'\')" style="background:#22c55e;color:#fff;border:0;border-radius:4px;padding:2px 8px;cursor:pointer">+</button></td>';
+      html+='</tr>';
+    });
+    html+='</table>';
+    html+='<button onclick="hfImport()" style="margin-top:8px;padding:8px 16px;border-radius:6px;border:0;background:#7c3aed;color:#fff">Import selected to dataset</button>';
+    document.getElementById('hf_files').innerHTML=html;
+  }catch(e){document.getElementById('hf_status').textContent='error: '+e.message;}
+}
+function hfToggle(btn,name){
+  if(hfSelected.has(name)){hfSelected.delete(name);btn.textContent='+';btn.style.background='#22c55e';}
+  else{hfSelected.add(name);btn.textContent='−';btn.style.background='#ef4444';}
+  document.getElementById('hf_status').textContent=hfSelected.size+' selected';
+}
+async function hfImport(){
+  if(!hfSelected.size){document.getElementById('hf_status').textContent='select files first';return;}
+  const token=document.getElementById('hf_token').value.trim();
+  const repo=document.getElementById('hf_repo').value.trim();
+  document.getElementById('hf_status').textContent='importing '+hfSelected.size+' files...';
+  try{
+    const r=await fetch('/hf_import',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({token,repo,files:Array.from(hfSelected)})});
+    const d=await r.json();
+    if(d.error){document.getElementById('hf_status').textContent='error: '+d.error;return;}
+    document.getElementById('hf_status').textContent=d.msg;
+    tick();
+  }catch(e){document.getElementById('hf_status').textContent='error: '+e.message;}
+}
 let songsDirty=false;
 var activeTab=localStorage.getItem('forge_tab')||'1';
 function switchTab(t){activeTab=t;localStorage.setItem('forge_tab',t);document.querySelectorAll('.pane').forEach(function(p){p.style.display='none';});document.getElementById('pane'+t).style.display='';document.querySelectorAll('.tab').forEach(function(b){b.classList.toggle('on',b.dataset.tab===t);});}
@@ -1068,6 +1126,10 @@ class H(http.server.BaseHTTPRequestHandler):
             return self._post_set_trigger()
         if path == "/upload_audio":
             return self._post_upload_audio()
+        if path == "/hf_list":
+            return self._post_hf_list()
+        if path == "/hf_import":
+            return self._post_hf_import()
         if path == "/create_run":
             return self._post_create_run()
         if path == "/switch_run":
@@ -1362,6 +1424,119 @@ class H(http.server.BaseHTTPRequestHandler):
         if not done:
             return self._fail("; ".join(errs) or "nothing converted", "2")
         msg = f"uploaded {len(done)}: {', '.join(done)}" + (f" — errors: {'; '.join(errs)}" if errs else "")
+        return self._ok({"ok": True, "msg": msg}, "2")
+    def _post_hf_list(self):
+        c = self._fields()
+        if c is None:
+            return self._fail("bad request", "2")
+        token = c.get("token", "").strip()
+        repo = c.get("repo", "").strip()
+        if not repo:
+            return self._fail("enter a repo name", "2")
+        headers = {}
+        if token:
+            headers["Authorization"] = f"Bearer {token}"
+        url = f"https://huggingface.co/api/datasets/{repo}/tree/main"
+        try:
+            import urllib.request, urllib.error
+            req = urllib.request.Request(url, headers=headers)
+            resp = urllib.request.urlopen(req, timeout=15)
+            data = json.loads(resp.read())
+            files = []
+            AUDIO_EXTS_HF = {".wav", ".flac", ".ogg", ".mp3", ".m4a", ".webm"}
+            for item in data:
+                name = item.get("path", "")
+                ext = os.path.splitext(name)[1].lower()
+                if ext in AUDIO_EXTS_HF or ext == ".txt":
+                    size = item.get("size", 0)
+                    if size > 50 * 1024 * 1024:
+                        continue
+                    size_str = f"{size / 1024 / 1024:.1f}MB" if size > 1024 * 1024 else f"{size / 1024:.0f}KB"
+                    files.append({"name": name, "size": size_str})
+            return self._ok({"files": files}, "2")
+        except urllib.error.HTTPError as e:
+            if e.code == 401:
+                return self._fail("auth failed — check your token", "2")
+            if e.code == 404:
+                return self._fail("repo not found", "2")
+            return self._fail(f"HF error: {e.code}", "2")
+        except Exception as e:
+            return self._fail(str(e), "2")
+    def _post_hf_import(self):
+        c = self._fields()
+        if c is None:
+            return self._fail("bad request", "2")
+        token = c.get("token", "").strip()
+        repo = c.get("repo", "").strip()
+        files = c.get("files", [])
+        if not repo or not files:
+            return self._fail("repo and files required", "2")
+        headers = {}
+        if token:
+            headers["Authorization"] = f"Bearer {token}"
+        _, ad, ald = run_paths()
+        os.makedirs(ad, exist_ok=True)
+        os.makedirs(ald, exist_ok=True)
+        done, errs = [], []
+        import urllib.request
+        AUDIO_EXTS_HF = {".wav", ".flac", ".ogg", ".mp3", ".m4a", ".webm"}
+        for fname in files:
+            url = f"https://huggingface.co/datasets/{repo}/resolve/main/{fname}"
+            name = clean_name(os.path.splitext(os.path.basename(fname))[0])
+            if not name:
+                errs.append(f"{fname}: bad name")
+                continue
+            try:
+                req = urllib.request.Request(url, headers=headers)
+                resp = urllib.request.urlopen(req, timeout=120)
+                data = resp.read()
+            except Exception as e:
+                errs.append(f"{fname}: download failed ({e})")
+                continue
+            ext = os.path.splitext(fname)[1].lower()
+            if ext == ".txt":
+                try:
+                    content = data.decode("utf-8", "replace").strip()[:15000]
+                except Exception:
+                    errs.append(f"{fname}: unreadable")
+                    continue
+                if not content:
+                    errs.append(f"{fname}: empty")
+                    continue
+                lines = content.split("\n")
+                style = lines[0].strip()[:1500] if lines else ""
+                lyrics = "\n".join(lines[1:]).strip()[:12000] if len(lines) > 1 else "[instrumental]"
+                open(os.path.join(ad, name + ".txt"), "w").write(full_style(style, run_trigger(), run_template()) + "\n")
+                open(os.path.join(ad, name + ".lyrics.txt"), "w").write(lyrics + "\n")
+                open(os.path.join(ald, name + ".lyrics.txt"), "w").write(lyrics + "\n")
+                done.append(name + " (lyrics)")
+            elif ext in AUDIO_EXTS_HF:
+                tmp = os.path.join(ad, name + ".incoming" + ext)
+                open(tmp, "wb").write(data)
+                out = os.path.join(ad, name + ".flac")
+                try:
+                    r = subprocess.run(["ffmpeg", "-y", "-v", "error", "-i", tmp, "-c:a", "flac", out],
+                                       capture_output=True, timeout=600)
+                except Exception:
+                    try: os.remove(tmp)
+                    except: pass
+                    errs.append(f"{fname}: convert failed")
+                    continue
+                try: os.remove(tmp)
+                except: pass
+                if r.returncode != 0 or not os.path.exists(out):
+                    errs.append(f"{fname}: ffmpeg rejected")
+                elif os.path.getsize(out) < 10240:
+                    try: os.remove(out)
+                    except: pass
+                    errs.append(f"{fname}: bad audio")
+                else:
+                    done.append(name)
+            else:
+                errs.append(f"{fname}: skipped (unknown type)")
+        if not done:
+            return self._fail("; ".join(errs) or "nothing imported", "2")
+        msg = f"imported {len(done)}: {', '.join(done)}" + (f" — errors: {'; '.join(errs)}" if errs else "")
         return self._ok({"ok": True, "msg": msg}, "2")
     def _repoint(self, link, target):
         os.makedirs(os.path.dirname(link), exist_ok=True)
