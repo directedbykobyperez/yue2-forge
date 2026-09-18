@@ -1,5 +1,9 @@
 """YuE2-Forge — LoRA training dashboard (stdlib only)."""
 import http.server, json, os, re, glob, subprocess, time
+try:
+    import torch
+except ImportError:
+    torch = None
 
 PORT = 8000
 OUT = os.environ.get("FORGE_OUT", "/workspace/tok/full/my_lora")
@@ -109,7 +113,31 @@ time stands still tonight</pre><span class="muted">First line = caption/style. T
 <div><label class="muted">save_every</label><br><input name="save_every" type="number" value="250" style="width:100%;background:#000;color:#eee;border:1px solid #444;border-radius:6px;padding:8px"></div>
 </div>
 from <select name="init" style="background:#000;color:#eee;border:1px solid #444;border-radius:6px;padding:8px"><option value="fresh">fresh</option><option value="last">last.pt</option><option value="best">best.pt</option></select> rank <select name="rank"><option value="16">16</option><option value="32">32</option><option value="64" selected>64</option><option value="128">128</option></select> to step <input name="steps" type="number" value="1600" style="width:90px;background:#000;color:#eee;border:1px solid #444;border-radius:6px;padding:8px">
-<button style="padding:8px 16px;border-radius:6px;border:0;background:#22c55e;color:#000">Start training</button><br><span class="muted">needs 7+ ready songs + dataset prepped (finish songs above, then prep via scripts/run_all.sh steps 1-3)</span></div></form>
+<button style="padding:8px 16px;border-radius:6px;border:0;background:#22c55e;color:#000">Start training</button>
+<button type="button" onclick="resumeTrain()" style="padding:8px 16px;border-radius:6px;border:0;background:#f59e0b;color:#000;margin-left:8px">Resume training</button><br><span class="muted">needs 7+ ready songs + dataset prepped (finish songs above, then prep via scripts/run_all.sh steps 1-3)</span>
+<div id="resume_info" style="display:none;margin-top:8px;padding:8px;background:#1c1c1c;border:1px solid #333;border-radius:6px;font-size:12px"></div>
+<script>
+async function resumeTrain(){
+  const info=document.getElementById('resume_info');info.style.display='block';info.innerHTML='checking last.pt...';
+  try{
+    const r=await fetch('/resume_info');const d=await r.json();
+    if(!d.exists){info.innerHTML='<span style="color:#f59e0b">no last.pt found — start training first</span>';return;}
+    info.innerHTML=`last.pt: step ${d.step} | best loss: ${d.best_loss} | rank ${d.rank}<br>
+    <form method="POST" action="/start_training" style="display:inline">
+    <input type="hidden" name="init" value="last"><input type="hidden" name="rank" value="${d.rank}">
+    <input type="hidden" name="steps" value="${d.target_steps}">
+    <input type="hidden" name="ar_kl_weight" value="0.04"><input type="hidden" name="ar_lr_multiplier" value="1.0">
+    <input type="hidden" name="ar_repetition_penalty" value="1.2"><input type="hidden" name="abc_dropout" value="0.5">
+    <input type="hidden" name="train_window" value="1500"><input type="hidden" name="ema_decay" value="0.99">
+    <input type="hidden" name="weight_decay" value="0.0001"><input type="hidden" name="lr" value="0.0001">
+    <input type="hidden" name="save_every" value="250"><input type="hidden" name="cot" value="off">
+    <input type="hidden" name="tokenizer" value="community"><input type="hidden" name="sheetsage_task" value="full">
+    <input type="hidden" name="vram_mode" value="low">
+    <button style="padding:6px 12px;border-radius:5px;border:0;background:#22c55e;color:#000;margin-top:6px">confirm resume from step ${d.step}</button>
+    </form>`;
+  }catch(e){info.innerHTML='<span style="color:#f87171">error: '+e.message+'</span>';}
+}
+</script></div></form>
 <h3>Samples (your custom prompt below)</h3>
 <!--STATIC_SAMPLES-->
 <div id="samples"></div>
@@ -624,7 +652,42 @@ class H(http.server.BaseHTTPRequestHandler):
                 self.wfile.write(ch)
                 left -= len(ch)
     def do_GET(self):
-        if self.path == "/api":
+        if self.path == "/resume_info":
+            base, _, _ = run_paths()
+            last_pt = os.path.join(base, "last.pt")
+            best_pt = os.path.join(base, "best.pt")
+            info = {"exists": False, "step": 0, "best_loss": 999, "rank": 64, "target_steps": 1600}
+            if os.path.exists(last_pt):
+                try:
+                    if torch:
+                        ck = torch.load(last_pt, map_location="cpu", weights_only=False)
+                        info["exists"] = True
+                        info["rank"] = ck.get("rank", 64)
+                        # Get best loss
+                        if os.path.exists(best_pt):
+                            best_ck = torch.load(best_pt, map_location="cpu", weights_only=False)
+                            info["best_loss"] = best_ck.get("best_loss", 999)
+                    else:
+                        info["exists"] = True
+                except Exception:
+                    pass
+                # Get step from last.pt step file
+                import glob as g
+                step_files = g.glob(os.path.join(base, "step-*.pt"))
+                if step_files:
+                    try:
+                        max_step = max(int(re.search(r"step-(\d+)", f).group(1)) for f in step_files if re.search(r"step-(\d+)", f))
+                        info["step"] = max_step
+                    except Exception:
+                        pass
+            b = json.dumps(info).encode()
+            self.send_response(200)
+            self.send_header("Content-Type", "application/json")
+            self.send_header("Cache-Control", "no-store")
+            self.send_header("Content-Length", str(len(b)))
+            self.end_headers()
+            self.wfile.write(b)
+        elif self.path == "/api":
             b = json.dumps(snapshot()).encode()
             self.send_response(200)
             self.send_header("Content-Type", "application/json")
