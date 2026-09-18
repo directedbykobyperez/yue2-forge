@@ -43,7 +43,7 @@ pre{background:#000;padding:10px;border-radius:8px;overflow:auto;max-height:220p
 <body><div class="hdr"><h2>&#127926; FORGETITLE</h2><div id="gpu">
 <!--STATIC_GPU--></div></div>
 <!--MSG-->
-<div class="tabs"><a class="tab on" data-tab="1">1 · Runs</a><a class="tab" data-tab="2">2 · Dataset studio</a><a class="tab" data-tab="3">3 · Training</a><a class="tab" data-tab="4">4 · Logs</a><a class="tab" data-tab="5">5 · Generate</a></div>
+<div class="tabs"><a href="#" class="tab on" data-tab="1">1 · Runs</a><a href="#" class="tab" data-tab="2">2 · Dataset studio</a><a href="#" class="tab" data-tab="3">3 · Training</a><a href="#" class="tab" data-tab="4">4 · Logs</a><a href="#" class="tab" data-tab="5">5 · Generate</a></div>
 <div id="pane1" class="pane"><h3>Runs</h3>
 <div id="runs"></div><!--STATIC_RUNS-->
 <form method="POST" action="/create_run"><div class="ckpt">new: <input name="name" placeholder="artist_name" style="width:180px;background:#000;color:#eee;border:1px solid #444;border-radius:6px;padding:8px"> <button style="padding:8px 16px;border-radius:6px;border:0;background:#7c3aed;color:#fff">Create</button> <span class="muted">then set its trigger below</span></div></form>
