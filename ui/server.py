@@ -182,7 +182,44 @@ More lyrics..."></textarea>
 <div class="ckpt">
 <label class="muted">Seed</label><br>
 <input id="gen_seed" type="number" value="12" style="width:120px;background:#000;color:#eee;border:1px solid #444;border-radius:6px;padding:8px">
-<button onclick="startGenerate()" style="padding:8px 16px;border-radius:6px;border:0;background:#7c3aed;color:#fff;margin-left:8px">Generate</button>
+</div>
+<div class="grid">
+<div class="ckpt">
+<label class="muted">CFG Scale</label><br>
+<input id="gen_cfg" type="number" value="1.0" step="0.1" min="1.0" max="20.0" style="width:80px;background:#000;color:#eee;border:1px solid #444;border-radius:6px;padding:8px">
+<span class="muted">1.0 = no guidance</span>
+</div>
+<div class="ckpt">
+<label class="muted">CoT Mode</label><br>
+<select id="gen_cot" style="background:#000;color:#eee;border:1px solid #444;border-radius:6px;padding:8px;width:100%">
+<option value="off" selected>off (default)</option>
+<option value="melody">melody</option>
+<option value="full">full</option>
+</select>
+</div>
+</div>
+<div class="grid">
+<div class="ckpt">
+<label class="muted">Temperature</label><br>
+<input id="gen_temp" type="number" value="1.0" step="0.05" min="0.1" max="2.0" style="width:80px;background:#000;color:#eee;border:1px solid #444;border-radius:6px;padding:8px">
+</div>
+<div class="ckpt">
+<label class="muted">Top P</label><br>
+<input id="gen_top_p" type="number" value="0.95" step="0.05" min="0.1" max="1.0" style="width:80px;background:#000;color:#eee;border:1px solid #444;border-radius:6px;padding:8px">
+</div>
+</div>
+<div class="grid">
+<div class="ckpt">
+<label class="muted">Top K</label><br>
+<input id="gen_top_k" type="number" value="50" step="1" min="0" max="200" style="width:80px;background:#000;color:#eee;border:1px solid #444;border-radius:6px;padding:8px">
+</div>
+<div class="ckpt">
+<label class="muted">Rep. Penalty</label><br>
+<input id="gen_rep_pen" type="number" value="1.2" step="0.05" min="1.0" max="3.0" style="width:80px;background:#000;color:#eee;border:1px solid #444;border-radius:6px;padding:8px">
+</div>
+</div>
+<div class="ckpt">
+<button onclick="startGenerate()" style="padding:8px 16px;border-radius:6px;border:0;background:#7c3aed;color:#fff">Generate</button>
 <span id="gen_status" class="muted" style="margin-left:8px"></span>
 </div>
 <div id="gen_progress" style="display:none" class="ckpt">
@@ -228,11 +265,17 @@ async function startGenerate(){
   const lyrics=document.getElementById('gen_lyrics').value;
   const seed=document.getElementById('gen_seed').value;
   const precision=document.getElementById('gen_precision').value;
+  const cfg=document.getElementById('gen_cfg').value;
+  const cot=document.getElementById('gen_cot').value;
+  const temp=document.getElementById('gen_temp').value;
+  const top_p=document.getElementById('gen_top_p').value;
+  const top_k=document.getElementById('gen_top_k').value;
+  const rep_pen=document.getElementById('gen_rep_pen').value;
   document.getElementById('gen_progress').style.display='block';
   document.getElementById('gen_status').textContent='starting...';
   try{
     const r=await fetch('/generate',{method:'POST',headers:{'Content-Type':'application/json'},
-      body:JSON.stringify({ckpt,style,lyrics,seed:parseInt(seed)||12,precision})});
+      body:JSON.stringify({ckpt,style,lyrics,seed:parseInt(seed)||12,precision,cfg:parseFloat(cfg)||1.0,cot,temp:parseFloat(temp)||1.0,top_p:parseFloat(top_p)||0.95,top_k:parseInt(top_k)||50,rep_pen:parseFloat(rep_pen)||1.2})});
     const d=await r.json();
     if(d.error){document.getElementById('gen_status').textContent='error: '+d.error;return;}
     document.getElementById('gen_status').textContent='generating... eta '+d.eta;
@@ -1512,6 +1555,12 @@ class H(http.server.BaseHTTPRequestHandler):
         lyrics = c.get("lyrics", "")
         seed = int(c.get("seed", 12))
         precision = c.get("precision", "int8")
+        cfg = float(c.get("cfg", 1.0))
+        cot = c.get("cot", "off")
+        temp = float(c.get("temp", 1.0))
+        top_p = float(c.get("top_p", 0.95))
+        top_k = int(c.get("top_k", 50))
+        rep_pen = float(c.get("rep_pen", 1.2))
         if not ckpt:
             return self._fail("select a checkpoint", "3")
         if not os.path.exists(ckpt):
@@ -1534,6 +1583,12 @@ class H(http.server.BaseHTTPRequestHandler):
                 out_tag = f"gen_{job_id}"
                 json.dump({"done": False, "pct": 30, "status": "loading model", "eta": "~60s"}, open(job_file, "w"))
                 env = dict(os.environ, HF_HOME="/workspace/hf", VRAM_MODE=precision)
+                env["CFG_SCALE"] = str(cfg)
+                env["COT"] = cot
+                env["TEMPERATURE"] = str(temp)
+                env["TOP_P"] = str(top_p)
+                env["TOP_K"] = str(top_k)
+                env["REPETITION_PENALTY"] = str(rep_pen)
                 if precision == "int8":
                     env["YUE2_MODEL"] = "/workspace/comfyui/yue2_3b_int8_convrot.safetensors"
                 repo = os.environ.get("FORGE_REPO", "/workspace/yue2-forge")

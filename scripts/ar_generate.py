@@ -38,8 +38,17 @@ cap_path = STYLE_TRACK[1:] if STYLE_TRACK.startswith("@") else f"/workspace/real
 cap=open(cap_path).read().split("===LYRICS===")[0].replace("Global Metadata:","").strip(); style=" ".join(cap.split())[:1500]
 if os.environ.get("STRIP_TEMPO_KEY"): style=re.sub(r",?\s*\d+\s*BPM,?\s*(key of [A-G][#b]? ?(major|minor)?)?,?","",style).replace("  "," ")
 lyrics=open(LYR_FILE).read().strip()
-ABC_FILE=os.environ.get("ABC_FILE"); COT=os.environ.get("COT","off"); kw={}
+COT=os.environ.get("COT","off"); kw={}
+CFG=float(os.environ.get("CFG_SCALE","1.0")); kw["cfg_scale"]=CFG
+TEMP=float(os.environ.get("TEMPERATURE","1.0"))
+TOP_P=float(os.environ.get("TOP_P","0.95"))
+TOP_K=int(os.environ.get("TOP_K","50"))
+REP_PEN=float(os.environ.get("REPETITION_PENALTY","1.2"))
+print(f"params: cfg={CFG} cot={COT} temp={TEMP} top_p={TOP_P} top_k={TOP_K} rep_pen={REP_PEN}", flush=True)
+ABC_FILE=os.environ.get("ABC_FILE")
 if ABC_FILE: kw["abc"]=open(ABC_FILE).read(); COT=os.environ.get("COT","melody"); print(f"cover mode: cot={COT} abc chars {len(kw['abc'])}", flush=True)
-res=pipe(style=style, lyrics=lyrics, cot=COT, seed=int(SEED), id=TAG, **kw); res.save(f"{OUT}/{TAG}.flac"); np.save(f"{OUT}/{TAG}_tokens.npy", np.asarray(res.semantic.tokens,dtype=np.int32))
-json.dump({"style":style,"lyrics":lyrics,"seed":int(SEED),"cot":COT,"abc_file":ABC_FILE,"ar":AR_CK,"ar_scale":AR_SCALE,"nar":NAR_CK,"audio_seconds":len(res.audio)/48000}, open(f"{OUT}/{TAG}.json","w"), indent=1)
+from yue2 import Sampling
+samp = Sampling(temperature=TEMP, top_p=TOP_P, top_k=TOP_K, repetition_penalty=REP_PEN)
+res=pipe(style=style, lyrics=lyrics, cot=COT, seed=int(SEED), id=TAG, abc_sampling=samp, semantic_sampling=samp, **kw); res.save(f"{OUT}/{TAG}.flac"); np.save(f"{OUT}/{TAG}_tokens.npy", np.asarray(res.semantic.tokens,dtype=np.int32))
+json.dump({"style":style,"lyrics":lyrics,"seed":int(SEED),"cot":COT,"cfg_scale":CFG,"temperature":TEMP,"top_p":TOP_P,"top_k":TOP_K,"repetition_penalty":REP_PEN,"abc_file":ABC_FILE,"ar":AR_CK,"ar_scale":AR_SCALE,"nar":NAR_CK,"audio_seconds":len(res.audio)/48000}, open(f"{OUT}/{TAG}.json","w"), indent=1)
 print(f"GEN DONE {TAG} {len(res.audio)/48000:.1f}s tokens {len(res.semantic.tokens)}", flush=True)
