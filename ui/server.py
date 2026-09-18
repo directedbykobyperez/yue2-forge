@@ -334,7 +334,7 @@ async function hfList(){
       const canAdd=isAudio||isTxt;
       html+='<tr style="border-bottom:#333 1px solid">';
       html+='<td style="padding:4px">'+icon+' <span class="muted">'+f.name+'</span> <span class="muted">('+f.size+')</span></td>';
-      if(canAdd) html+='<td style="padding:4px;text-align:right"><button onclick="hfToggle(this,\''+f.name+'\')" style="background:#22c55e;color:#fff;border:0;border-radius:4px;padding:2px 8px;cursor:pointer">+</button></td>';
+      if(canAdd) html+='<td style="padding:4px;text-align:right"><button onclick="hfToggle(this)" data-name="'+f.name+'" style="background:#22c55e;color:#fff;border:0;border-radius:4px;padding:2px 8px;cursor:pointer">+</button></td>';
       html+='</tr>';
     });
     html+='</table>';
@@ -342,9 +342,10 @@ async function hfList(){
     document.getElementById('hf_files').innerHTML=html;
   }catch(e){document.getElementById('hf_status').textContent='error: '+e.message;}
 }
-function hfToggle(btn,name){
+function hfToggle(btn){
+  const name=btn.dataset.name;
   if(hfSelected.has(name)){hfSelected.delete(name);btn.textContent='+';btn.style.background='#22c55e';}
-  else{hfSelected.add(name);btn.textContent='−';btn.style.background='#ef4444';}
+  else{hfSelected.add(name);btn.textContent='\u2212';btn.style.background='#ef4444';}
   document.getElementById('hf_status').textContent=hfSelected.size+' selected';
 }
 async function hfImport(){
