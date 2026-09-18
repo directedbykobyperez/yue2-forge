@@ -22,6 +22,7 @@ DL = {
 
 HTML = """<!DOCTYPE html><html><head><meta charset="utf-8">
 <meta name="viewport" content="width=device-width,initial-scale=1">
+<script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.7/dist/chart.umd.min.js"></script>
 <title>FORGETITLE</title>
 <style>body{background:#111;color:#eee;font-family:system-ui,sans-serif;max-width:760px;margin:0 auto;padding:20px}
 .bar{height:26px;background:#333;border-radius:13px;overflow:hidden;margin:10px 0}
@@ -50,7 +51,16 @@ pre{background:#000;padding:10px;border-radius:8px;overflow:auto;max-height:220p
 </div>
 <div id="pane3" class="pane" style="display:none"><!--STATIC_STATUS-->
 <iframe src="/live-mini" style="width:100%;height:118px;border:1px solid #2C2C2C;border-radius:10px;overflow:hidden" scrolling="no" title="live progress"></iframe>
-<h3>Loss graph</h3><!--LOSSGRAPH-->
+<h3>Loss graph</h3>
+<div style="display:flex;align-items:center;gap:12px;margin:6px 0;flex-wrap:wrap">
+<label class="muted" style="font-size:12px"><input type="checkbox" id="lg_loss" checked onchange="renderLossChart()"> loss</label>
+<label class="muted" style="font-size:12px"><input type="checkbox" id="lg_artist" checked onchange="renderLossChart()"> artist</label>
+<label class="muted" style="font-size:12px"><input type="checkbox" id="lg_minted" checked onchange="renderLossChart()"> minted</label>
+<span class="muted" style="font-size:12px">smooth:</span>
+<input type="range" id="lg_smooth" min="1" max="50" value="5" style="width:80px;accent-color:#22d3ee" oninput="renderLossChart()">
+<label class="muted" style="font-size:12px"><input type="checkbox" id="lg_log" onchange="renderLossChart()"> Log Y</label>
+</div>
+<div style="background:#1c1c1c;border-radius:8px;padding:8px;margin-bottom:8px"><canvas id="lossCanvas" height="160"></canvas></div><!--LOSSGRAPH-->
 <div class="bar"><div class="fill" id="fill" style="width:FILLPCT%"></div></div>
 <div id="pct" class="muted"></div>
 
@@ -59,6 +69,7 @@ pre{background:#000;padding:10px;border-radius:8px;overflow:auto;max-height:220p
 <div class="card">step<div><b id="step">-</b> / 1600</div></div>
 <div class="card">phase<div><b id="phase">-</b></div></div>
 <div class="card">loss<div><b id="loss">-</b></div></div>
+<div class="card">speed<div><b id="speed">-</b></div></div>
 <div class="card">artist eval<div><b id="eval">-</b></div></div>
 <div class="card">minted_val eval<div><b id="mval">-</b></div></div>
 <div class="card">ETA<div><b id="eta">-</b></div></div>
@@ -129,6 +140,7 @@ document.getElementById('pct').textContent=d.pct+'% - '+d.note;
 document.getElementById('step').textContent=d.step_est;
 document.getElementById('phase').textContent=d.phase;
 document.getElementById('loss').textContent=d.loss;
+document.getElementById('speed').textContent=d.speed;
 document.getElementById('eval').textContent=d.artist_eval;
 document.getElementById('mval').textContent=d.minted_eval;
 document.getElementById('eta').textContent=d.eta;
@@ -142,7 +154,7 @@ let s='';if(d.samples.length==0){s='no samples yet - first one lands at step 600
 for(const x of d.samples){const k=x.step+'p'+x.p;const pl=x.p>=0?' · prompt '+(x.p+1):'';s+='<div class="ckpt"><b>step '+x.step+pl+'</b> <span class="muted">'+x.secs+'s</span><br><button class="play" data-k="'+k+'" data-file="'+x.file+'">\u25B6</button><input class="seek" type="range" id="seek'+k+'" value="0" step="0.1"> <span id="t'+k+'" class="muted">0:00</span><div class="bar" style="height:6px"><div class="fill" id="bar'+k+'"></div></div><a class="dl" href="/m/'+x.file+'" download="'+x.file+'">\u2B07 Download MP3</a></div>';}
 document.getElementById('samples').innerHTML=s;
 let c='';if(d.checkpoints.length==0){c='none yet';}
-for(const x of d.checkpoints){c+='<div class="ckpt">step-'+x.step+' <span class="muted">'+x.mb+' MB'+(x.sampled?' - sampled &#9989;':'')+'</span></div>';}
+for(const x of d.checkpoints){c+='<div class="ckpt" style="display:flex;align-items:center;gap:8px"><span style="flex:1">step-'+x.step+' <span class="muted">'+x.mb+' MB'+(x.sampled?' - sampled &#9989;':'')+'</span></span><button onclick="deleteCkpt('+x.step+')" style="padding:4px 10px;border-radius:5px;border:1px solid #f87171;background:#3a1414;color:#f87171;font-size:12px;cursor:pointer">delete</button></div>';}
 document.getElementById('ckpts').innerHTML=c;
 let g={};for(const x of d.files){(g[x.g]=g[x.g]||[]).push(x);}
 const names={ckpt:'Checkpoints (resume-ready LoRAs)',log:'Logs',runlog:'Run eval log',data:'Training dataset'};
@@ -162,11 +174,36 @@ const aud=x.audio?'<audio controls preload="none" style="width:100%" src="/a/'+d
 q+='<div class="ckpt"><b>'+x.name+'</b> '+(x.audio?'<span class="muted">'+x.audio.mb+' MB flac</span>':'<span class="muted">no audio</span>')+' '+(ok?'\u2714 ready':'<span style="color:#f59e0b">'+x.issues.join('; ')+'</span>')+(x.notes&&x.notes.length?'<br><span class="muted">note: '+x.notes.join('; ')+'</span>':'')+'<br>'+aud+'<form method="POST" action="/save_song"><input type="hidden" name="name" value="'+x.name+'">style / caption<br><input name="style" value="'+esc(x.style)+'" style="width:100%;background:#000;color:#eee;border:1px solid #444;border-radius:6px;padding:8px"><br>lyrics<br><textarea name="lyrics" rows="6" style="width:100%;background:#000;color:#eee;border:1px solid #444;border-radius:6px;padding:8px">'+esc(x.lyrics)+'</textarea><br><button>Save song</button></form><form method="POST" action="/delete_song"><input type="hidden" name="name" value="'+x.name+'"><button>Delete</button></form></div>';}
 document.getElementById('songs').innerHTML=q;}}
 
-}catch(e){document.getElementById('pct').textContent='connection error ('+e.message+'), retrying...';}}tick();setInterval(tick,3000);</script></body></html>"""
+}catch(e){document.getElementById('pct').textContent='connection error ('+e.message+'), retrying...';}}tick();setInterval(tick,3000);
+
+/* --- interactive loss chart (Chart.js) --- */
+let lossChart=null, lossData={};
+function smoothPts(pts,win){if(win<=1)return pts;const r=[];for(let i=0;i<pts.length;i++){const sl=pts.slice(Math.max(0,i-win+1),i+1);r.push({x:pts[i].x,y:sl.reduce((a,b)=>a+b.y,0)/sl.length});}return r;}
+async function fetchLoss(){try{const r=await fetch('/api/loss');if(!r.ok)return;lossData=await r.json();renderLossChart();}catch(e){}}
+function renderLossChart(){
+const ctx=document.getElementById('lossCanvas');if(!ctx)return;
+const showLoss=document.getElementById('lg_loss').checked;
+const showArtist=document.getElementById('lg_artist').checked;
+const showMinted=document.getElementById('lg_minted').checked;
+const win=parseInt(document.getElementById('lg_smooth').value)||5;
+const logY=document.getElementById('lg_log').checked;
+const datasets=[];
+if(showLoss&&lossData.loss&&lossData.loss.length>1){datasets.push({label:'loss',data:smoothPts(lossData.loss,win),borderColor:'#FF3B30',backgroundColor:'rgba(255,59,48,0.08)',borderWidth:1.5,pointRadius:0,tension:0.3,fill:true});}
+if(showArtist&&lossData.artist&&lossData.artist.length>1){datasets.push({label:'artist',data:smoothPts(lossData.artist,win),borderColor:'#22d3ee',backgroundColor:'rgba(34,211,238,0.08)',borderWidth:1.5,pointRadius:0,tension:0.3,fill:true});}
+if(showMinted&&lossData.minted&&lossData.minted.length>1){datasets.push({label:'minted',data:smoothPts(lossData.minted,win),borderColor:'#A0A0A0',backgroundColor:'rgba(160,160,160,0.08)',borderWidth:1.5,pointRadius:0,tension:0.3,fill:true});}
+if(lossChart){lossChart.destroy();lossChart=null;}
+if(!datasets.length){ctx.getContext('2d').clearRect(0,0,ctx.width,ctx.height);return;}
+lossChart=new Chart(ctx,{type:'line',data:{datasets},options:{responsive:true,maintainAspectRatio:false,animation:false,interaction:{mode:'index',intersect:false},scales:{x:{type:'linear',title:{display:true,text:'step',color:'#888'},ticks:{color:'#888'},grid:{color:'#333'}},y:{type:logY?'logarithmic':'linear',title:{display:true,text:'value',color:'#888'},ticks:{color:'#888'},grid:{color:'#333'}}},plugins:{legend:{labels:{color:'#ccc',boxWidth:12,padding:8}},tooltip:{backgroundColor:'#1c1c1c',borderColor:'#444',borderWidth:1,titleColor:'#eee',bodyColor:'#ccc'}}}});
+}
+fetchLoss();setInterval(fetchLoss,15000);
+
+async function deleteCkpt(step){if(!confirm('Delete checkpoint step-'+step+'? This cannot be undone.'))return;
+try{const r=await fetch('/delete_ckpt',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({step:step})});const d=await r.json();if(d.msg)document.getElementById('pct').textContent=d.msg;tick();}catch(e){document.getElementById('pct').textContent='delete failed';}}
+</script></body></html>"""
 
 def snapshot():
     d = {"step": 0, "pct": 0.0, "phase": "starting", "loss": "-", "artist_eval": "-",
-         "minted_eval": "-", "eta": "-", "note": "", "checkpoints": [], "samples": [], "files": [], "log_tail": "", "step_est": 0, "cfg": {}, "studio": {}, "runs": {"active": "", "runs": []}, "prep": {}, "gpu": {}, "loss_svg": ""}
+         "minted_eval": "-", "eta": "-", "note": "", "checkpoints": [], "samples": [], "files": [], "log_tail": "", "step_est": 0, "cfg": {}, "studio": {}, "runs": {"active": "", "runs": []}, "prep": {}, "gpu": {}, "loss_svg": "", "speed": "-"}
     try:
         lines = open(LOG, errors="replace").read().splitlines()
     except Exception:
@@ -177,6 +214,16 @@ def snapshot():
         m = re.match(r"step (\d+) loss ([\d.]+) cursor .*? (\d+)s mem", ln)
         if m:
             steps.append((int(m.group(1)), float(m.group(2)), int(m.group(3))))
+    # speed: sec/iter from last two logged steps
+    speed = "-"
+    if len(steps) >= 2:
+        s0, _, t0 = steps[-2]
+        s1, _, t1 = steps[-1]
+        ds = s1 - s0
+        if ds > 0:
+            sec_per = (t1 - t0) / ds
+            speed = f"{sec_per:.1f}s/iter"
+    d["speed"] = speed
     evals = []
     for ln in lines:
         m = re.match(r"EVAL step (\d+) minted_val ([\d.]+) artist ([\d.]+) (\d+)s", ln)
@@ -449,7 +496,7 @@ def loss_series():
     return out
 def gpu_snapshot():
     try:
-        q = subprocess.run(["nvidia-smi", "--query-gpu=name,temperature.gpu,utilization.gpu,memory.used,memory.total,power.draw,power.limit", "--format=csv,noheader,nounits"], capture_output=True, text=True, timeout=8)
+        q = subprocess.run(["nvidia-smi", "--query-gpu=name,temperature.gpu,utilization.gpu,memory.used,memory.total,power.draw,power.limit,fan.speed,clocks.current.graphics,clocks.current.memory", "--format=csv,noheader,nounits"], capture_output=True, text=True, timeout=8)
         if q.returncode != 0:
             return {}
         p = [x.strip() for x in q.stdout.splitlines()[0].split(",")]
@@ -459,6 +506,9 @@ def gpu_snapshot():
                 "mem": f"{float(p[3]) / 1024:.1f} / {float(p[4]) / 1024:.1f} GB",
                 "mempct": round(100 * float(p[3]) / max(1, float(p[4]))),
                 "pwr": f"{p[5]} / {p[6]} W",
+                "fan": p[7] + "%" if len(p) > 7 and p[7] not in ("N/A", "[N/A]") else "-",
+                "clk_gpu": p[8] + " MHz" if len(p) > 8 and p[8] not in ("N/A", "[N/A]") else "-",
+                "clk_mem": p[9] + " MHz" if len(p) > 9 and p[9] not in ("N/A", "[N/A]") else "-",
                 "vram_mode": os.environ.get("VRAM_MODE", vram_mode)}
     except Exception:
         return {}
@@ -541,6 +591,17 @@ class H(http.server.BaseHTTPRequestHandler):
     def do_GET(self):
         if self.path == "/api":
             b = json.dumps(snapshot()).encode()
+            self.send_response(200)
+            self.send_header("Content-Type", "application/json")
+            self.send_header("Cache-Control", "no-store")
+            self.send_header("Content-Length", str(len(b)))
+            self.end_headers()
+            self.wfile.write(b)
+        elif self.path == "/api/loss":
+            series = loss_series()
+            # convert to Chart.js format: [{x: step, y: value}, ...]
+            out = {k: [{"x": s, "y": v} for s, v in v] for k, v in series.items()}
+            b = json.dumps(out).encode()
             self.send_response(200)
             self.send_header("Content-Type", "application/json")
             self.send_header("Cache-Control", "no-store")
@@ -688,7 +749,7 @@ class H(http.server.BaseHTTPRequestHandler):
                        f"<div class='plabel'>Seed</div>"
                        f"<input class='seedbox' name='seed_{i}' value='{sd}' type='number'></div></div>")
             g = d["gpu"]
-            gp = (f"<b>{_h.escape(g.get('name', 'GPU'))}</b><br>🌡 {g.get('temp', '-')} · load {g.get('load', '-')} · {g.get('mem', '-')} ({g.get('mempct', 0)}%) · {g.get('pwr', '-')} · VRAM: {g.get('vram_mode', '?')}" if g else "<span class='muted'>no GPU visible</span>")
+            gp = (f"<b>{_h.escape(g.get('name', 'GPU'))}</b><br>🌡 {g.get('temp', '-')} · load {g.get('load', '-')} · {g.get('mem', '-')} ({g.get('mempct', 0)}%) · {g.get('pwr', '-')} · fan {g.get('fan', '-')} · GPU {g.get('clk_gpu', '-')} · mem {g.get('clk_mem', '-')} · VRAM: {g.get('vram_mode', '?')}" if g else "<span class='muted'>no GPU visible</span>")
             b = HTML.replace("<!--STATIC_STATUS-->", st).replace("<!--STATIC_SAMPLES-->", ss or "<div class='muted'>no samples yet</div>").replace("<!--STATIC_FILES-->", ff).replace("FILLPCT", str(d["pct"])).replace("<!--STATIC_RUNS-->", rs or "<div class='muted'>no runs yet</div>").replace("<!--STATIC_PREP-->", pp).replace("<!--STATIC_GPU-->", gp).replace("<!--LOSSGRAPH-->", d["loss_svg"] or "<div class='muted'>no training data yet</div>").replace("<!--STATIC_PROMPTS-->", pc)
             b = b.replace("<!--MSG-->", f"<div class='ckpt' style='border-color:#7c3aed'>{_h.escape(msg)}</div>" if msg else "")
             b = b.replace("<!--STATIC_PHASE-->", f"<span class='pill'><span class='dot'></span>{_h.escape(str(d['phase']))} · {d['step_est']}/{TOTAL}</span>")
@@ -729,6 +790,8 @@ class H(http.server.BaseHTTPRequestHandler):
             return self._post_delete_run()
         if path == "/prepare_dataset":
             return self._post_prepare_dataset()
+        if path == "/delete_ckpt":
+            return self._post_delete_ckpt()
         self.send_error(404)
     def _body(self, limit):
         try:
@@ -1150,6 +1213,28 @@ class H(http.server.BaseHTTPRequestHandler):
                          env=dict(os.environ, HF_HOME="/workspace/hf",
                                   REG_PACK="/workspace/real/regularizer/minted_regularizer_pack.pt"))
         return self._ok({"ok": True, "msg": "prep started (prep → cursor → ar_prep)"}, "3")
+    def _post_delete_ckpt(self):
+        c = self._fields()
+        if c is None:
+            return self._fail("bad request", "3")
+        try:
+            step = int(c.get("step", 0))
+            if step <= 0:
+                raise ValueError("bad step number")
+        except Exception as e:
+            return self._fail(e, "3")
+        ckd = os.path.join("/workspace/tok/full", active_run())
+        path = os.path.join(ckd, f"step-{step}.pt")
+        if not os.path.exists(path):
+            return self._fail(f"checkpoint step-{step} not found", "3")
+        if subprocess.run(["pgrep", "-f", "ar_train|ar_lora_"], capture_output=True).returncode == 0:
+            return self._fail("stop training first before deleting checkpoints", "3")
+        try:
+            os.remove(path)
+        except Exception as e:
+            return self._fail(str(e), "3")
+        return self._ok({"ok": True, "msg": f"deleted step-{step}.pt"}, "3")
+    def _post_delete_run(self):
         if subprocess.run(["pgrep", "-f", "ar_train|ar_lora_"], capture_output=True).returncode == 0:
             return self._fail("stop training first — refusing to delete under a live run", "1")
         c = self._fields()
