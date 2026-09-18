@@ -5,7 +5,7 @@ try:
 except ImportError:
     torch = None
 
-PORT = 8000
+PORT = int(os.environ.get("PORT", 8000))
 OUT = os.environ.get("FORGE_OUT", "/workspace/tok/full/my_lora")
 GEN = os.environ.get("FORGE_GEN", "/workspace/tok/full/gen")
 LOG = os.environ.get("FORGE_LOG", "/workspace/ar_train.log")
